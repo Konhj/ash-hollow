@@ -23,6 +23,20 @@ jobs:
       - name: Build exe
         run: pyinstaller --onefile --windowed --name AshHollow --icon icon.ico main.py
 
+      - name: Smoke test exe
+        shell: pwsh
+        run: |
+          $env:SDL_VIDEODRIVER = "dummy"
+          $env:SDL_AUDIODRIVER = "dummy"
+          $p = Start-Process -FilePath "dist\AshHollow.exe" -PassThru
+          Start-Sleep -Seconds 10
+          if ($p.HasExited) {
+            Write-Error "Game exited early with code $($p.ExitCode)"
+            exit 1
+          }
+          Stop-Process -Name "AshHollow" -Force -ErrorAction SilentlyContinue
+          Write-Host "Smoke test passed"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
