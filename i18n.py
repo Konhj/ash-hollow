@@ -52,7 +52,6 @@ STRINGS = {
     "parry_msg": {"en": "PARRY!", "zh": "弹反成功!"},
     "riposte_msg": {"en": "RIPOSTE!", "zh": "处决!"},
     "cannot_rest": {"en": "CANNOT REST, FOE NEARBY", "zh": "敌人在附近,无法休息"},
-    "bonfire_rested": {"en": "BONFIRE RESTED", "zh": "已在篝火休息"},
 }
 
 

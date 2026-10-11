@@ -712,7 +712,6 @@ class Game:
                         b.reset()
                         self.save_current()
                         self.fade = 1.0
-                        self.message(t("bonfire_rested"), ORANGE, 1.6)
                         self.message(t("game_saved"), ORANGE, 1.6)
                 elif self.room == "hub" and p.rect.right > 1150 and 200 < p.rect.centery < 520:
                     self.enter_arena()
