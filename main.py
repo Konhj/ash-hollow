@@ -34,6 +34,7 @@ KEY_ACTIONS = [
     ("parry", "parry"),
     ("estus", "estus"),
     ("interact", "rest"),
+    ("sprint", "sprint"),
 ]
 MOVE_DIRS = {"move_up": "up", "move_down": "down", "move_left": "left", "move_right": "right"}
 

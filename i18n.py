@@ -33,6 +33,7 @@ STRINGS = {
     "roll": {"en": "ROLL", "zh": "翻滚"},
     "parry": {"en": "PARRY", "zh": "弹反"},
     "estus": {"en": "ESTUS FLASK", "zh": "原素瓶"},
+    "sprint": {"en": "SPRINT", "zh": "疾跑"},
     "rest": {"en": "INTERACT", "zh": "交互"},
     "pause": {"en": "PAUSE", "zh": "暂停"},
     "confirm_quit": {"en": "QUIT THE GAME?", "zh": "确定要退出游戏吗?"},

@@ -67,12 +67,21 @@ class Player:
         self.last_move = move
 
         if self.state == "idle":
-            self.stamina = min(PLAYER_MAX_STAMINA, self.stamina + STAMINA_REGEN * dt)
+            sprint_held = (
+                keys[self.bindings["sprint"]]
+                and move.length_squared() > 0
+            )
+            sprinting = sprint_held and self.stamina > 0
+            if not sprint_held:
+                self.stamina = min(PLAYER_MAX_STAMINA, self.stamina + STAMINA_REGEN * dt)
             if move.length_squared() > 0:
                 self.facing = move.copy()
-                self.x += move.x * PLAYER_SPEED
-                self.y += move.y * PLAYER_SPEED
+                spd = PLAYER_SPEED * SPRINT_MULT if sprinting else PLAYER_SPEED
+                self.x += move.x * spd
+                self.y += move.y * spd
                 self.clamp()
+                if sprinting:
+                    self.stamina = max(0.0, self.stamina - SPRINT_DRAIN * dt)
         elif self.state == "roll":
             self.x += self.roll_dir.x * ROLL_SPEED
             self.y += self.roll_dir.y * ROLL_SPEED
