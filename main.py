@@ -255,6 +255,7 @@ class Game:
         self.hub_banner = 0.0
         self.inv_tab = 0
         self.inv_hover = None
+        self.inv_selected_slot = None
         self.inv_cells = []
         self.inv_equip_cells = []
         self.inv_tab_rects = []
@@ -549,17 +550,16 @@ class Game:
         p.sync_rect()
         inv = data.get("inventory")
         if isinstance(inv, list):
-            valid = [i for i in inv if items_data.get(i)]
+            mapped = [items_data.ITEM_ALIASES.get(i, i) for i in inv]
+            valid = [m for m in mapped if items_data.get(m)]
             if valid:
                 p.inventory = valid
         eq = data.get("equipment")
         if isinstance(eq, dict):
             for k in p.equipment:
                 v = eq.get(k)
-                if v and items_data.get(v):
-                    p.equipment[k] = v
-                else:
-                    p.equipment[k] = None
+                v = items_data.ITEM_ALIASES.get(v, v)
+                p.equipment[k] = v if v and items_data.get(v) else None
         p._prev_max_hp = p.max_hp()
         p.hp = min(p.max_hp(), p.hp)
         b.x = bd.get("x", b.x)
@@ -626,7 +626,9 @@ class Game:
                         self.mouse_pos = self.to_canvas(event.pos)
                         self.mouse_clicked = True
                     elif event.button == 3:
-                        if not self.menu.capture and self.state in ("main_menu", "pause"):
+                        if self.state == "inventory":
+                            self.inventory_right_click()
+                        elif not self.menu.capture and self.state in ("main_menu", "pause"):
                             self.on_escape()
             self.update(dt)
             self.draw()
@@ -673,6 +675,9 @@ class Game:
             self.particles.update(dt)
             return
         if self.state == "inventory":
+            if self.cfg["bindings"]["inventory"] in self.just:
+                self.state = "play"
+                return
             self.update_inventory()
             self.mouse_clicked = False
             return
@@ -884,25 +889,24 @@ class Game:
             return False
         return self.bonfire.in_range(p.rect.center)
 
-    def equip_item(self, item_id):
+    def equip_into(self, key, item_id):
         item = items_data.get(item_id)
         if not item:
             return
-        slot = item["slot"]
-        p = self.player
-        if slot == "talisman":
-            placed = False
-            for i in (1, 2, 3):
-                key = f"talisman{i}"
-                if p.equipment[key] is None:
-                    p.equipment[key] = item_id
-                    placed = True
-                    break
-            if not placed:
-                p.equipment["talisman1"] = item_id
-        else:
-            p.equipment[slot] = item_id
-        p.refresh_max_hp()
+        itype = item["type"]
+        islot = item["slot"]
+        if key == "mainhand" and not (itype == "weapon" and islot == "mainhand"):
+            return
+        if key == "offhand" and not (itype == "weapon" and islot == "offhand"):
+            return
+        if key == "armor" and itype != "armor":
+            return
+        if key.startswith("talisman") and itype != "talisman":
+            return
+        if itype == "talisman" and item_id in self.player.equipment.values():
+            return
+        self.player.equipment[key] = item_id
+        self.player.refresh_max_hp()
         self.save_current()
 
     def unequip_slot(self, key):
@@ -910,8 +914,15 @@ class Game:
         self.player.refresh_max_hp()
         self.save_current()
 
+    def inventory_right_click(self):
+        mp = self.mouse_pos
+        for slot in self.inv_equip_cells:
+            if slot["rect"].collidepoint(mp):
+                if self.player.equipment.get(slot["key"]):
+                    self.unequip_slot(slot["key"])
+                break
+
     def update_inventory(self):
-        just = self.just
         mp = self.mouse_pos
         click = self.mouse_clicked
         hover = None
@@ -922,17 +933,21 @@ class Game:
                     click = False
                     break
         if click:
+            for slot in self.inv_equip_cells:
+                if slot["rect"].collidepoint(mp):
+                    if self.inv_selected_slot == slot["key"]:
+                        self.inv_selected_slot = None
+                    else:
+                        self.inv_selected_slot = slot["key"]
+                    click = False
+                    break
+        if click:
             for cell in self.inv_cells:
                 if cell["rect"].collidepoint(mp):
-                    if cell["item"]:
-                        self.equip_item(cell["item"])
+                    if cell["item"] and self.inv_selected_slot:
+                        self.equip_into(self.inv_selected_slot, cell["item"])
+                        self.inv_selected_slot = None
                     break
-            else:
-                for slot in self.inv_equip_cells:
-                    if slot["rect"].collidepoint(mp):
-                        if self.player.equipment.get(slot["key"]):
-                            self.unequip_slot(slot["key"])
-                        break
         for cell in self.inv_cells:
             if cell["rect"].collidepoint(mp):
                 hover = cell["item"]
@@ -1037,11 +1052,14 @@ class Game:
         self.inv_equip_cells = []
         for i, (key, label) in enumerate(slot_defs):
             col, row = i % 3, i // 3
-            cx = 30 + 46 + col * 121
+            cx = 109 + col * 121
             cy = 40 + 335 + row * 121
             rect = pygame.Rect(cx - 52, cy - 52, 104, 104)
             pygame.draw.rect(canvas, (35, 35, 44), rect, border_radius=4)
-            pygame.draw.rect(canvas, (110, 110, 122), rect, 2, border_radius=4)
+            if key == self.inv_selected_slot:
+                pygame.draw.rect(canvas, (255, 255, 255), rect, 3, border_radius=4)
+            else:
+                pygame.draw.rect(canvas, (110, 110, 122), rect, 2, border_radius=4)
             lab = f["small"].render(label, True, (150, 150, 160))
             canvas.blit(lab, lab.get_rect(center=(cx, cy - 36)))
             item_id = p.equipment[key]
@@ -1053,6 +1071,10 @@ class Game:
                 dash = f["normal"].render("-", True, (90, 90, 98))
                 canvas.blit(dash, dash.get_rect(center=(cx, cy + 8)))
             self.inv_equip_cells.append({"rect": rect, "key": key, "item": item_id})
+
+        if self.inv_selected_slot:
+            hint = f["small"].render(t("select_item_hint"), True, YELLOW)
+            canvas.blit(hint, hint.get_rect(center=(230, 660)))
 
         right = pygame.Surface((790, 640), pygame.SRCALPHA)
         right.fill((22, 22, 30, 225))
@@ -1280,8 +1302,10 @@ class Game:
     def draw_hud(self, surf):
         label = self.fonts["small"].render(i18n.t("unkindled"), True, GRAY)
         surf.blit(label, (30, 8))
-        draw_bar(surf, 30, 28, 260, 16, self.player.hp / self.player.max_hp(), RED, DARK_RED)
-        draw_bar(surf, 30, 50, 220, 10, self.player.stamina / self.player.max_stamina(), GREEN, DARK_GREEN)
+        w_hp = int(260 * (self.player.max_hp() / PLAYER_MAX_HP))
+        w_st = int(220 * (self.player.max_stamina() / PLAYER_MAX_STAMINA))
+        draw_bar(surf, 30, 28, w_hp, 16, self.player.hp / self.player.max_hp(), RED, DARK_RED)
+        draw_bar(surf, 30, 50, w_st, 10, self.player.stamina / self.player.max_stamina(), GREEN, DARK_GREEN)
         for i in range(ESTUS_MAX):
             self.draw_flask(surf, 30 + i * 32, 68, i < self.player.estus)
         if self.room == "arena" and self.boss.aggro and not self.boss.dead:

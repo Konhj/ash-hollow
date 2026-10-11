@@ -60,6 +60,7 @@ STRINGS = {
     "hp_up": {"en": "MAX HP", "zh": "最大生命"},
     "stamina_up": {"en": "MAX STAMINA", "zh": "最大精力"},
     "empty": {"en": "EMPTY", "zh": "空"},
+    "select_item_hint": {"en": "SELECT AN ITEM FROM THE BACKPACK", "zh": "从右侧背包选择物品"},
     "victory": {"en": "VICTORY ACHIEVED", "zh": "胜利达成"},
     "restart": {"en": "PRESS ENTER TO PLAY AGAIN", "zh": "按回车再来一次"},
     "esc_main_menu": {"en": "PRESS ESC FOR MAIN MENU", "zh": "按 ESC 返回主菜单"},

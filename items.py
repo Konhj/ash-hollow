@@ -66,15 +66,15 @@ ITEMS = {
             "zh": "轻便的皮甲。",
         },
     },
-    "life_talisman": {
-        "name": {"en": "LIFE TALISMAN", "zh": "生命护符"},
+    "golden_tree_shard": {
+        "name": {"en": "GOLDEN TREE SHARD", "zh": "黄金树碎片"},
         "type": "talisman",
         "slot": "talisman",
         "stats": {},
         "effect": {"hp_up": 20},
         "desc": {
-            "en": "Raises maximum HP by 20.",
-            "zh": "最大生命 +20。",
+            "en": "A blessing from a distant land.",
+            "zh": "来自遥远国度的赐福。",
         },
     },
     "stamina_talisman": {
@@ -101,7 +101,9 @@ ITEMS = {
     },
 }
 
-DEFAULT_INVENTORY = ["broadsword", "dagger", "leather_armor", "life_talisman", "fire_talisman"]
+DEFAULT_INVENTORY = ["broadsword", "dagger", "leather_armor", "golden_tree_shard", "fire_talisman"]
+
+ITEM_ALIASES = {"life_talisman": "golden_tree_shard"}
 DEFAULT_EQUIPMENT = {
     "mainhand": "broadsword",
     "offhand": None,
