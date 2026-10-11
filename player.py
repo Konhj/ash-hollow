@@ -4,7 +4,8 @@ from settings import *
 
 
 class Player:
-    def __init__(self, x, y):
+    def __init__(self, x, y, bindings):
+        self.bindings = bindings
         self.spawn = (float(x), float(y))
         self.rect = pygame.Rect(0, 0, 30, 46)
         self.facing = pygame.Vector2(1, 0)
@@ -53,13 +54,13 @@ class Player:
         self.flash = max(0.0, self.flash - dt)
 
         move = pygame.Vector2(0, 0)
-        if keys[pygame.K_a]:
+        if keys[self.bindings["move_left"]]:
             move.x -= 1
-        if keys[pygame.K_d]:
+        if keys[self.bindings["move_right"]]:
             move.x += 1
-        if keys[pygame.K_w]:
+        if keys[self.bindings["move_up"]]:
             move.y -= 1
-        if keys[pygame.K_s]:
+        if keys[self.bindings["move_down"]]:
             move.y += 1
         if move.length_squared() > 0:
             move.normalize_ip()
@@ -91,7 +92,7 @@ class Player:
 
     def start_attack(self):
         if self.stamina < ATTACK_COST:
-            return "OUT OF STAMINA"
+            return "out_of_stamina"
         self.stamina -= ATTACK_COST
         self.state = "attack"
         self.state_timer = ATTACK_TIME
@@ -101,7 +102,7 @@ class Player:
         if self.roll_cooldown > 0:
             return None
         if self.stamina < ROLL_COST:
-            return "OUT OF STAMINA"
+            return "out_of_stamina"
         self.stamina -= ROLL_COST
         self.state = "roll"
         self.state_timer = ROLL_TIME
@@ -110,20 +111,20 @@ class Player:
 
     def start_parry(self):
         if self.stamina < PARRY_COST:
-            return "OUT OF STAMINA"
+            return "out_of_stamina"
         self.stamina -= PARRY_COST
         self.state = "parry"
         self.state_timer = PARRY_TIME
 
     def start_drink(self):
         if self.estus <= 0:
-            return "NO ESTUS LEFT"
+            return "no_estus"
         self.state = "drink"
         self.state_timer = DRINK_TIME
 
     def start_riposte(self):
         if self.stamina < RIPOSTE_COST:
-            return "OUT OF STAMINA"
+            return "out_of_stamina"
         self.stamina -= RIPOSTE_COST
         self.state = "riposte"
         self.state_timer = RIPOSTE_TIME

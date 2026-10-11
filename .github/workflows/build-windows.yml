@@ -21,7 +21,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build exe
-        run: pyinstaller --onefile --windowed --name AshHollow --icon icon.ico main.py
+        run: pyinstaller --onefile --windowed --name AshHollow --icon icon.ico --add-data "fonts;fonts" main.py
 
       - name: Smoke test exe
         shell: pwsh
