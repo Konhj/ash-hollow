@@ -743,7 +743,7 @@ class Game:
                 r = p.start_roll()
                 if r:
                     self.message(t(r), RED, 1.4, "small")
-            elif keys[self.cfg["bindings"]["offhand"]]:
+            elif self.room == "arena" and keys[self.cfg["bindings"]["offhand"]]:
                 if p.shield() is not None:
                     p.start_guard()
                 else:
