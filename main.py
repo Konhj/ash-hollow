@@ -12,6 +12,7 @@ from bonfire import Bonfire
 from effects import Particles
 import config
 import i18n
+import changelog
 
 if sys.platform == "win32":
     try:
@@ -226,12 +227,19 @@ class Game:
         self.mouse_pos = (0, 0)
         self.mouse_clicked = False
         self.menu = Menu()
+        self.version_rect = pygame.Rect(0, 0, 0, 0)
+        self.cl_mode = None
+        self.cl_sel = 0
+        self.cl_scroll = 0
+        self.cl_ver = None
+        self.cl_lines = []
+        self.cl_rects = []
         self.state = "main_menu"
         self.build_main_menu()
         self.new_game()
 
     def load_fonts(self):
-        path = config.resource_path(os.path.join("fonts", "wqy-subset.ttf"))
+        path = config.resource_path(os.path.join("fonts", "wqy-microhei.ttf"))
         try:
             self.fonts["small"] = pygame.font.Font(path, 22)
             self.fonts["normal"] = pygame.font.Font(path, 30)
@@ -480,6 +488,9 @@ class Game:
         self.go_main_menu()
 
     def on_escape(self):
+        if self.state == "main_menu" and self.cl_mode:
+            self.cl_back()
+            return
         if self.state == "play":
             self.build_pause_menu()
             self.state = "pause"
@@ -511,6 +522,9 @@ class Game:
                             self.start_new_game()
                 elif event.type == pygame.MOUSEMOTION:
                     self.mouse_pos = self.to_canvas(event.pos)
+                elif event.type == pygame.MOUSEWHEEL:
+                    if self.state == "main_menu" and self.cl_mode:
+                        self.cl_scroll -= event.y * 64
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:
                         self.mouse_pos = self.to_canvas(event.pos)
@@ -534,7 +548,17 @@ class Game:
         self.messages = [m for m in self.messages if m[3] > 0]
 
         if self.state in ("main_menu", "pause"):
-            self.menu.update(self.just, self.mouse_pos, self.mouse_clicked)
+            if self.state == "main_menu" and self.cl_mode:
+                self.update_changelog()
+            else:
+                self.menu.update(self.just, self.mouse_pos, self.mouse_clicked)
+            if (
+                self.state == "main_menu"
+                and not self.cl_mode
+                and self.mouse_clicked
+                and self.version_rect.collidepoint(self.mouse_pos)
+            ):
+                self.open_changelog()
             self.mouse_clicked = False
             return
         if self.state == "died":
@@ -722,15 +746,118 @@ class Game:
         w, h = self.screen.get_size()
         return (pos[0] * WIDTH / w, pos[1] * HEIGHT / h)
 
+    def open_changelog(self):
+        self.cl_mode = "list"
+        self.cl_sel = 0
+        self.cl_scroll = 0
+
+    def cl_back(self):
+        if self.cl_mode == "detail":
+            self.cl_mode = "list"
+            self.cl_scroll = 0
+        else:
+            self.cl_mode = None
+
+    def cl_open_detail(self, ver):
+        self.cl_ver = ver
+        self.cl_mode = "detail"
+        self.cl_scroll = 0
+        lines = []
+        for entry in changelog.CHANGELOG.get(ver, []):
+            lines += self.wrap_text("- " + entry, self.fonts["normal"], 860)
+        self.cl_lines = lines
+
+    def wrap_text(self, text, font, max_w):
+        lines = []
+        cur = ""
+        for ch in text:
+            if ch == "\n":
+                lines.append(cur)
+                cur = ""
+                continue
+            if cur and font.size(cur + ch)[0] > max_w:
+                lines.append(cur)
+                cur = ch
+            else:
+                cur += ch
+        if cur:
+            lines.append(cur)
+        return lines
+
+    def update_changelog(self):
+        just = self.just
+        click = self.mouse_clicked
+        mp = self.mouse_pos
+        vers = list(changelog.CHANGELOG.keys())
+        if self.cl_mode == "list":
+            if pygame.K_UP in just or pygame.K_w in just:
+                self.cl_sel = max(0, self.cl_sel - 1)
+            if pygame.K_DOWN in just or pygame.K_s in just:
+                self.cl_sel = min(len(vers) - 1, self.cl_sel + 1)
+            if pygame.K_RETURN in just and vers:
+                self.cl_open_detail(vers[self.cl_sel])
+            if click and vers:
+                for i, r in enumerate(self.cl_rects):
+                    if r.collidepoint(mp):
+                        self.cl_open_detail(vers[i])
+                        break
+        else:
+            if pygame.K_DOWN in just or pygame.K_s in just:
+                self.cl_scroll += 60
+            if pygame.K_UP in just or pygame.K_w in just:
+                self.cl_scroll -= 60
+
     def draw_main_menu(self, canvas):
         dark = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         dark.fill((0, 0, 0, 190))
         canvas.blit(dark, (0, 0))
+        if self.cl_mode:
+            self.draw_changelog(canvas)
+            return
         self.menu.draw(canvas, self.fonts)
-        ver = self.fonts["small"].render(f"v{VERSION}", True, (110, 110, 120))
-        canvas.blit(ver, (12, HEIGHT - 28))
+        hover = self.version_rect.collidepoint(self.mouse_pos)
+        color = YELLOW if hover else (110, 110, 120)
+        ver_img = self.fonts["small"].render(f"v{VERSION}", True, color)
+        self.version_rect = ver_img.get_rect(topleft=(12, HEIGHT - 28))
+        canvas.blit(ver_img, self.version_rect)
         if not self.menu.stack:
             self.draw_control_hints(canvas)
+
+    def draw_changelog(self, canvas):
+        f = self.fonts
+        if self.cl_mode == "list":
+            title = f["big"].render(i18n.t("changelog"), True, (220, 220, 228))
+            canvas.blit(title, title.get_rect(center=(WIDTH // 2, 110)))
+            vers = list(changelog.CHANGELOG.keys())
+            max_scroll = max(0, len(vers) * 48 - 440)
+            self.cl_scroll = max(0, min(self.cl_scroll, max_scroll))
+            self.cl_rects = []
+            y = 180 - self.cl_scroll
+            for i, v in enumerate(vers):
+                sel = i == self.cl_sel
+                color = YELLOW if sel else (160, 160, 170)
+                label = f"> v{v} <" if sel else f"v{v}"
+                img = f["normal"].render(label, True, color)
+                rect = img.get_rect(center=(WIDTH // 2, y))
+                if 120 < y < 650:
+                    canvas.blit(img, rect)
+                self.cl_rects.append(rect)
+                y += 48
+            hint = f["small"].render(f"ESC  {i18n.t('back')}", True, (110, 110, 120))
+            canvas.blit(hint, hint.get_rect(center=(WIDTH // 2, 690)))
+        else:
+            head = f["big"].render(f"v{self.cl_ver}", True, YELLOW)
+            canvas.blit(head, head.get_rect(center=(WIDTH // 2, 110)))
+            max_scroll = max(0, len(self.cl_lines) * 36 - 500)
+            self.cl_scroll = max(0, min(self.cl_scroll, max_scroll))
+            y = 180 - self.cl_scroll
+            for line in self.cl_lines:
+                img = f["normal"].render(line, True, (205, 205, 213))
+                if 120 < y < 650:
+                    canvas.blit(img, img.get_rect(midleft=(WIDTH // 2 - 420, y)))
+                y += 36
+            hint = f["small"].render(f"ESC  {i18n.t('back')}", True, (110, 110, 120))
+            canvas.blit(hint, hint.get_rect(center=(WIDTH // 2, 690)))
 
     def draw_pause_overlay(self, canvas):
         dark = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)

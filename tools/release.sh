@@ -9,6 +9,11 @@ if [ -z "$ver" ]; then
     exit 1
 fi
 
+grep -q "\"$ver\":" changelog.py || {
+    echo "错误: changelog.py 中没有版本 $ver 的更新日志,请先在 CHANGELOG 里添加"
+    exit 1
+}
+
 sed -i "s/^VERSION = .*/VERSION = \"$ver\"/" settings.py
 git add settings.py
 git commit -m "Release v$ver"

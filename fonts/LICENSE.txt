@@ -1,0 +1,7 @@
+WenQuanYi Micro Hei (文泉驿微米黑)
+
+Licensed under the Apache License, Version 2.0.
+See https://www.apache.org/licenses/LICENSE-2.0
+Or the GNU General Public License v3 (with font embedding exception).
+
+Source: https://wenq.org/

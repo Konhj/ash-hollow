@@ -40,6 +40,7 @@ STRINGS = {
     "no": {"en": "NO", "zh": "否"},
     "adjust_hint": {"en": "USE LEFT / RIGHT ARROWS TO CHANGE", "zh": "使用左右方向键更改设置"},
     "key_conflict": {"en": "KEY CONFLICT!", "zh": "按键冲突!"},
+    "changelog": {"en": "CHANGELOG", "zh": "更新日志"},
     "victory": {"en": "VICTORY ACHIEVED", "zh": "胜利达成"},
     "restart": {"en": "PRESS ENTER TO PLAY AGAIN", "zh": "按回车再来一次"},
     "esc_main_menu": {"en": "PRESS ESC FOR MAIN MENU", "zh": "按 ESC 返回主菜单"},
