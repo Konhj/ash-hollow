@@ -248,6 +248,8 @@ class Game:
         self.cl_ver = None
         self.cl_lines = []
         self.cl_rects = []
+        self.room = "hub"
+        self.hub_banner = 0.0
         self.state = "main_menu"
         self.build_main_menu()
         self.new_game()
@@ -302,14 +304,31 @@ class Game:
         return surf
 
     def new_game(self):
-        self.player = Player(260, 560, self.cfg["bindings"])
+        self.player = Player(640, 560, self.cfg["bindings"])
         self.boss = Boss(1080, 400)
-        self.bonfire = Bonfire(150, 540)
+        self.bonfire = Bonfire(640, 430)
+        self.room = "hub"
+        self.hub_banner = 2.6
         self.messages.clear()
         self.particles.items.clear()
         self.shake = 0.0
         self.fade = 1.0
         self.death_timer = 0.0
+
+    def enter_arena(self):
+        self.room = "arena"
+        p = self.player
+        p.x, p.y = 150.0, 360.0
+        p.facing = pygame.Vector2(1, 0)
+        p.sync_rect()
+
+    def exit_to_hub(self):
+        self.room = "hub"
+        self.boss.reset()
+        p = self.player
+        p.x, p.y = 1120.0, 400.0
+        p.facing = pygame.Vector2(-1, 0)
+        p.sync_rect()
 
     def message(self, text, color=WHITE, dur=1.4):
         for m in self.messages:
@@ -498,7 +517,8 @@ class Game:
             return
         config.save_game(
             {
-                "version": 1,
+                "version": 2,
+                "room": self.room,
                 "player": {"x": p.x, "y": p.y, "hp": p.hp, "estus": p.estus},
                 "boss": {"x": b.x, "y": b.y, "hp": b.hp, "aggro": b.aggro},
             }
@@ -522,6 +542,11 @@ class Game:
         b.hp = min(b.max_hp, max(1, int(bd.get("hp", b.hp))))
         b.aggro = bool(bd.get("aggro", False))
         b.sync_rect()
+        self.room = data.get("room", "hub")
+        if self.room not in ("hub", "arena"):
+            self.room = "hub"
+        if self.room == "hub":
+            self.hub_banner = 1.6
         self.state = "play"
         self.fade = 1.0
 
@@ -611,6 +636,8 @@ class Game:
             if self.death_timer <= 0:
                 self.player.respawn()
                 self.boss.reset()
+                self.room = "hub"
+                self.hub_banner = 2.6
                 self.state = "play"
                 self.fade = 1.0
                 self.message(i18n.t("respawned"), ORANGE, 1.6)
@@ -622,26 +649,34 @@ class Game:
         t = i18n.t
         p = self.player
         b = self.boss
+        self.hub_banner = max(0.0, self.hub_banner - dt)
         self.bonfire.update(dt)
         p.update(dt, keys)
         if p.just_drank:
             p.just_drank = False
             self.particles.spawn(p.rect.centerx, p.rect.centery, (120, 220, 120), 10, 2.2, 0.5)
-        b.update(dt, p)
+        if self.room == "arena":
+            b.update(dt, p)
         self.particles.update(dt)
 
-        if random.random() < 0.35:
-            bx, by = self.bonfire.pos
-            self.particles.spawn(bx + random.uniform(-8, 8), by - 10, (255, 170, 50), 1, 1.2, 0.8)
-        if b.state == "attack" and b.attack_kind == "charge":
-            self.particles.spawn(
-                b.rect.centerx - b.charge_dir.x * 40,
-                b.rect.centery + 20,
-                (180, 60, 40),
-                2,
-                2.0,
-                0.3,
-            )
+        if self.room == "hub":
+            if random.random() < 0.35:
+                bx, by = self.bonfire.pos
+                self.particles.spawn(bx + random.uniform(-8, 8), by - 10, (255, 170, 50), 1, 1.2, 0.8)
+            if p.rect.right > 1240 and 200 < p.rect.centery < 520:
+                self.enter_arena()
+        else:
+            if p.rect.left < 40 and 200 < p.rect.centery < 520:
+                self.exit_to_hub()
+            if b.state == "attack" and b.attack_kind == "charge":
+                self.particles.spawn(
+                    b.rect.centerx - b.charge_dir.x * 40,
+                    b.rect.centery + 20,
+                    (180, 60, 40),
+                    2,
+                    2.0,
+                    0.3,
+                )
 
         if p.dead:
             self.state = "died"
@@ -649,7 +684,7 @@ class Game:
             return
 
         if p.state == "idle":
-            if keys[self.cfg["bindings"]["attack"]] and not b.dead:
+            if self.room == "arena" and keys[self.cfg["bindings"]["attack"]] and not b.dead:
                 if b.state == "staggered" and p.center_dist(b) < 130:
                     r = p.start_riposte()
                 else:
@@ -668,7 +703,7 @@ class Game:
                 r = p.start_drink()
                 if r:
                     self.message(t(r), RED)
-            elif keys[self.cfg["bindings"]["interact"]] and self.bonfire.in_range(p.rect.center):
+            elif keys[self.cfg["bindings"]["interact"]] and self.room == "hub" and self.bonfire.in_range(p.rect.center):
                 if b.aggro and not b.dead:
                     self.message(t("cannot_rest"), RED, 1.4)
                 else:
@@ -680,14 +715,20 @@ class Game:
                     self.message(t("bonfire_rested"), ORANGE, 1.6)
                     self.message(t("game_saved"), ORANGE, 1.6)
 
-        if p.state == "attack" and not p.attack_landed and p.attack_active() and not b.dead:
+        if (
+            self.room == "arena"
+            and p.state == "attack"
+            and not p.attack_landed
+            and p.attack_active()
+            and not b.dead
+        ):
             hb = p.get_attack_hitbox()
             if hb.colliderect(b.rect):
                 p.attack_landed = True
                 b.take_damage(ATTACK_DAMAGE)
                 self.particles.spawn(hb.centerx, hb.centery, (255, 220, 120), 6, 3.0, 0.3)
 
-        if p.state == "riposte" and not p.riposte_done:
+        if self.room == "arena" and p.state == "riposte" and not p.riposte_done:
             if (RIPOSTE_TIME - p.state_timer) >= 0.25:
                 p.riposte_done = True
                 if not b.dead and p.center_dist(b) < 160:
@@ -698,7 +739,7 @@ class Game:
                     self.particles.spawn(b.rect.centerx, b.rect.centery, (255, 200, 60), 24, 5.0, 0.6)
                     self.message(t("riposte_msg"), YELLOW, 1.2)
 
-        if b.state == "attack" and not b.hit_landed:
+        if self.room == "arena" and b.state == "attack" and not b.hit_landed:
             if b.attack_kind == "slash":
                 hr = b.current_hit_rect()
                 if hr and hr.colliderect(p.rect):
@@ -725,7 +766,7 @@ class Game:
                         if p.take_damage(SLAM_DAMAGE, b.dir):
                             self.on_player_hit()
 
-        if b.dead and b.state_timer <= 0:
+        if self.room == "arena" and b.dead and b.state_timer <= 0:
             config.delete_save()
             self.state = "victory"
             self.message(t("victory"), YELLOW, 2.0)
@@ -737,8 +778,12 @@ class Game:
         world.blit(self.floor, (0, 0))
         pygame.draw.rect(world, WALL, (0, 0, WIDTH, HEIGHT), 6)
         if self.state in ("play", "pause", "died", "victory"):
-            self.bonfire.draw(world)
-            self.boss.draw(world)
+            if self.room == "hub":
+                self.bonfire.draw(world)
+                self.draw_fog_gate(world, 1244)
+            else:
+                self.draw_fog_gate(world, 0)
+                self.boss.draw(world)
             if not self.player.dead:
                 self.player.draw(world)
             self.particles.draw(world)
@@ -755,7 +800,10 @@ class Game:
 
         if self.state in ("play", "pause", "died"):
             self.draw_hud(canvas)
-            self.draw_banner(canvas)
+            if self.room == "hub":
+                self.draw_hub_banner(canvas)
+            else:
+                self.draw_banner(canvas)
             self.draw_messages(canvas)
         if self.state == "died":
             a = max(0.0, min(1.0, (2.4 - self.death_timer) / 0.6))
@@ -782,9 +830,30 @@ class Game:
 
     def can_rest(self):
         p, b = self.player, self.boss
-        if p.dead or (b.aggro and not b.dead):
+        if self.room != "hub" or p.dead or (b.aggro and not b.dead):
             return False
         return self.bonfire.in_range(p.rect.center)
+
+    def draw_fog_gate(self, surf, x):
+        band = pygame.Surface((36, 340), pygame.SRCALPHA)
+        band.fill((200, 205, 215, 60))
+        tm = self.time
+        for i in range(6):
+            yy = 30 + ((tm * (16 + i * 7) + i * 53) % 280)
+            xx = 6 + 24 * (0.5 + 0.5 * math.sin(tm * 2 + i * 2.1))
+            pygame.draw.circle(band, (226, 229, 236, 95), (int(xx), int(yy)), 9)
+        surf.blit(band, (x, 200))
+
+    def draw_hub_banner(self, surf):
+        bt = self.hub_banner
+        if bt <= 0:
+            return
+        fade_in = min(1.0, (2.6 - bt) / 0.4)
+        fade_out = min(1.0, bt / 0.5)
+        alpha = int(255 * min(fade_in, fade_out))
+        img = self.fonts["big"].render(i18n.t("firelink"), True, (200, 200, 210))
+        img.set_alpha(alpha)
+        surf.blit(img, img.get_rect(center=(WIDTH // 2, 190)))
 
     def to_canvas(self, pos):
         w, h = self.screen.get_size()
@@ -919,7 +988,7 @@ class Game:
         draw_bar(surf, 30, 50, 220, 10, self.player.stamina / PLAYER_MAX_STAMINA, GREEN, DARK_GREEN)
         for i in range(ESTUS_MAX):
             self.draw_flask(surf, 30 + i * 32, 68, i < self.player.estus)
-        if self.boss.aggro and not self.boss.dead:
+        if self.room == "arena" and self.boss.aggro and not self.boss.dead:
             w = 840
             x = (WIDTH - w) // 2
             y = HEIGHT - 58

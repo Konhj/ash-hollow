@@ -4,6 +4,7 @@ STRINGS = {
     "game_title": {"en": "ASH HOLLOW", "zh": "ASH HOLLOW"},
     "boss_name": {"en": "ABYSS WATCHER", "zh": "深渊监视者"},
     "boss_subtitle": {"en": "HEIR OF THE EMBERS", "zh": "余烬的继承者"},
+    "firelink": {"en": "FIRELINK SHRINE", "zh": "传火祭祀场"},
     "unkindled": {"en": "UNKINDLED", "zh": "无火余烬"},
     "new_game": {"en": "NEW GAME", "zh": "新游戏"},
     "continue": {"en": "CONTINUE", "zh": "继续游戏"},
