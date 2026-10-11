@@ -90,8 +90,8 @@ class Player:
         r = 62
         for i, off in enumerate((0.0, -0.12, -0.24)):
             p = max(0.0, min(1.0, frac + off))
-            a1 = math.radians(-110 + 220 * p - 18.5)
-            a2 = math.radians(-110 + 220 * p + 18.5)
+            a1 = math.radians(-110 + 220 * p - 27.5)
+            a2 = math.radians(-110 + 220 * p + 27.5)
             alpha = int(230 - i * 90)
             pygame.draw.arc(seg, (255, 255, 255, alpha), (75 - r, 75 - r, r * 2, r * 2), a1, a2, 5)
             pygame.draw.arc(
