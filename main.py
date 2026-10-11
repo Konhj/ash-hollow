@@ -545,7 +545,6 @@ class Game:
         bd = data.get("boss", {})
         p.x = pd.get("x", p.x)
         p.y = pd.get("y", p.y)
-        p.hp = min(p.max_hp(), max(1, int(pd.get("hp", p.hp))))
         p.estus = min(ESTUS_MAX, max(0, int(pd.get("estus", p.estus))))
         p.sync_rect()
         inv = data.get("inventory")
@@ -561,7 +560,7 @@ class Game:
                 v = items_data.ITEM_ALIASES.get(v, v)
                 p.equipment[k] = v if v and items_data.get(v) else None
         p._prev_max_hp = p.max_hp()
-        p.hp = min(p.max_hp(), p.hp)
+        p.hp = min(p.max_hp(), max(1, int(pd.get("hp", p.max_hp()))))
         b.x = bd.get("x", b.x)
         b.y = bd.get("y", b.y)
         b.hp = min(b.max_hp, max(1, int(bd.get("hp", b.hp))))
