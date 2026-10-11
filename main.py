@@ -50,61 +50,134 @@ class Menu:
         self.capture = None
         self.start_y = 300
         self.step = 56
+        self.columns = 1
+        self.hint = None
+        self.hit_rects = []
 
-    def set(self, title, items, start_y=300, step=56):
+    def set(self, title, items, start_y=300, step=56, columns=1, hint=None):
         self.title = title
         self.items = items
         self.selected = 0
         self.start_y = start_y
         self.step = step
+        self.columns = columns
+        self.hint = hint
+        self.hit_rects = []
 
-    def push(self, title, items, start_y=300, step=56):
-        self.stack.append((self.title, self.items, self.selected, self.start_y, self.step))
-        self.set(title, items, start_y, step)
+    def push(self, title, items, start_y=300, step=56, columns=1, hint=None):
+        self.stack.append((self.title, self.items, self.selected, self.start_y, self.step, self.columns, self.hint))
+        self.set(title, items, start_y, step, columns, hint)
 
     def pop(self):
         if self.stack:
-            self.title, self.items, self.selected, self.start_y, self.step = self.stack.pop()
+            self.title, self.items, self.selected, self.start_y, self.step, self.columns, self.hint = self.stack.pop()
             return True
         return False
 
-    def update(self, just):
-        if self.capture or not self.items:
+    def visible_indices(self):
+        out = []
+        for i, it in enumerate(self.items):
+            if it.get("visible") and not it["visible"]():
+                continue
+            out.append(i)
+        return out
+
+    def rows(self, n):
+        return (n + 1) // 2 if self.columns == 2 else n
+
+    def update(self, just, mouse=None, clicked=False):
+        if self.capture:
             return
-        if pygame.K_UP in just or pygame.K_w in just:
-            self.selected = (self.selected - 1) % len(self.items)
-        if pygame.K_DOWN in just or pygame.K_s in just:
-            self.selected = (self.selected + 1) % len(self.items)
-        item = self.items[self.selected]
-        if pygame.K_LEFT in just and item.get("adjust"):
-            item["adjust"](-1)
-        if pygame.K_RIGHT in just and item.get("adjust"):
-            item["adjust"](1)
+        visible = self.visible_indices()
+        n = len(visible)
+        if not n:
+            return
+        rows = self.rows(n)
+
+        if mouse is not None and len(self.hit_rects) == n:
+            for i, r in enumerate(self.hit_rects):
+                if r.collidepoint(mouse):
+                    self.selected = i
+                    break
+
+        if self.columns == 2:
+            if pygame.K_UP in just or pygame.K_w in just:
+                self.selected = max(0, self.selected - 1)
+            if pygame.K_DOWN in just or pygame.K_s in just:
+                self.selected = min(n - 1, self.selected + 1)
+            if pygame.K_LEFT in just or pygame.K_a in just:
+                if self.selected >= rows:
+                    self.selected -= rows
+            if pygame.K_RIGHT in just or pygame.K_d in just:
+                if self.selected + rows < n:
+                    self.selected += rows
+        else:
+            if pygame.K_UP in just or pygame.K_w in just:
+                self.selected = (self.selected - 1) % n
+            if pygame.K_DOWN in just or pygame.K_s in just:
+                self.selected = (self.selected + 1) % n
+
+        item = self.items[visible[self.selected]]
+        if self.columns == 1:
+            if pygame.K_LEFT in just and item.get("adjust"):
+                item["adjust"](-1)
+            if pygame.K_RIGHT in just and item.get("adjust"):
+                item["adjust"](1)
         if pygame.K_RETURN in just and item.get("action"):
             item["action"]()
+
+        if clicked and mouse is not None and len(self.hit_rects) == n:
+            for i, r in enumerate(self.hit_rects):
+                if r.collidepoint(mouse):
+                    item = self.items[visible[i]]
+                    if item.get("adjust"):
+                        item["adjust"](1 if mouse[0] >= r.centerx else -1)
+                    elif item.get("action") and (not item.get("enabled") or item["enabled"]()):
+                        item["action"]()
+                    break
 
     def draw(self, surf, fonts):
         if self.title:
             img = fonts["big"].render(self.title, True, (220, 220, 228))
             surf.blit(img, img.get_rect(center=(WIDTH // 2, 150)))
-        y = self.start_y
-        for i, item in enumerate(self.items):
+        visible = self.visible_indices()
+        n = len(visible)
+        rows = self.rows(n)
+        self.hit_rects = []
+        for i, idx in enumerate(visible):
+            item = self.items[idx]
             sel = i == self.selected
-            if item.get("enabled") and not item["enabled"]():
-                color = (70, 70, 78)
-            elif sel:
+            col = i // rows if self.columns == 2 else 0
+            row = i % rows
+            if self.columns == 2:
+                x = WIDTH // 2 - 300 + col * 600
+            else:
+                x = WIDTH // 2
+            y = self.start_y + row * self.step
+            if sel:
                 color = YELLOW
+            elif item.get("red") and item["red"]():
+                color = (255, 90, 90)
             else:
                 color = GRAY
+            if item.get("enabled") and not item["enabled"]():
+                color = (70, 70, 78)
             label = item["label"]() if callable(item["label"]) else item["label"]
             if sel:
                 label = "> " + label + " <"
             img = fonts["big"].render(label, True, color)
-            surf.blit(img, img.get_rect(center=(WIDTH // 2, y)))
-            y += self.step
+            rect = img.get_rect(center=(x, y))
+            surf.blit(img, rect)
+            self.hit_rects.append(rect.inflate(40, 14))
         if self.capture:
-            img = fonts["big"].render(i18n.t("press_any_key"), True, YELLOW)
-            surf.blit(img, img.get_rect(center=(WIDTH // 2, 640)))
+            img = fonts["small"].render(i18n.t("press_any_key"), True, YELLOW)
+            surf.blit(img, img.get_rect(bottomright=(WIDTH - 24, HEIGHT - 18)))
+        if self.hint:
+            h = self.hint()
+            if h:
+                text, color = h
+                img = fonts["small"].render(text, True, color)
+                surf.blit(img, img.get_rect(center=(WIDTH // 2, 692)))
 
 
 class Game:
@@ -126,6 +199,8 @@ class Game:
         self.fade = 1.0
         self.death_timer = 0.0
         self.just = set()
+        self.mouse_pos = (0, 0)
+        self.mouse_clicked = False
         self.menu = Menu()
         self.state = "main_menu"
         self.build_main_menu()
@@ -215,10 +290,13 @@ class Game:
             {
                 "label": lambda: t("continue"),
                 "action": self.load_and_continue,
-                "enabled": lambda: config.load_save() is not None,
+                "visible": lambda: config.load_save() is not None,
             },
             {"label": lambda: t("settings"), "action": self.build_settings_menu},
-            {"label": lambda: t("quit"), "action": self.quit_game},
+            {
+                "label": lambda: t("quit"),
+                "action": lambda: self.build_confirm("confirm_quit", self.quit_game),
+            },
         ]
         self.menu.set(t("game_title"), items)
 
@@ -227,9 +305,26 @@ class Game:
         items = [
             {"label": lambda: t("resume"), "action": self.resume_game},
             {"label": lambda: t("settings"), "action": self.build_settings_menu},
-            {"label": lambda: t("save_and_exit"), "action": self.save_and_exit},
+            {
+                "label": lambda: t("save_and_exit"),
+                "action": lambda: self.build_confirm("confirm_save_exit", self.save_and_exit),
+            },
         ]
         self.menu.set(t("pause"), items)
+
+    def build_confirm(self, question_key, yes_action):
+        t = i18n.t
+        items = [
+            {"label": lambda: t("yes"), "action": yes_action},
+            {"label": lambda: t("no"), "action": lambda: self.menu.pop()},
+        ]
+        self.menu.push(t(question_key), items, start_y=330, step=60)
+
+    def binding_conflicts(self):
+        counts = {}
+        for v in self.cfg["bindings"].values():
+            counts[v] = counts.get(v, 0) + 1
+        return {k for k, c in counts.items() if c > 1}
 
     def build_settings_menu(self):
         t = i18n.t
@@ -248,7 +343,7 @@ class Game:
             {"label": lambda: t("key_bindings"), "action": self.build_key_menu},
             {"label": lambda: t("back"), "action": lambda: self.menu.pop()},
         ]
-        self.menu.push(t("settings"), items)
+        self.menu.push(t("settings"), items, hint=lambda: (t("adjust_hint"), GRAY))
 
     def build_key_menu(self):
         t = i18n.t
@@ -264,9 +359,18 @@ class Game:
             def act(action=action):
                 self.menu.capture = action
 
-            items.append({"label": mk, "action": act})
+            def red(action=action):
+                return self.cfg["bindings"][action] in self.binding_conflicts()
+
+            items.append({"label": mk, "action": act, "red": red})
         items.append({"label": lambda: t("back"), "action": lambda: self.menu.pop()})
-        self.menu.push(t("key_bindings"), items, start_y=250, step=44)
+
+        def conflict_hint():
+            if self.binding_conflicts():
+                return (t("key_conflict"), (255, 90, 90))
+            return None
+
+        self.menu.push(t("key_bindings"), items, start_y=250, step=44, columns=2, hint=conflict_hint)
 
     def start_new_game(self):
         self.new_game()
@@ -322,8 +426,7 @@ class Game:
             if not self.menu.pop():
                 self.state = "play"
         elif self.state == "main_menu":
-            if not self.menu.pop():
-                self.quit_game()
+            self.menu.pop()
         elif self.state == "victory":
             self.go_main_menu()
 
@@ -334,17 +437,26 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.quit_game()
-                if event.type == pygame.KEYDOWN:
-                    self.just.add(event.key)
+                elif event.type == pygame.KEYDOWN:
                     if self.menu.capture:
                         self.set_binding(self.menu.capture, event.key)
                         self.menu.capture = None
                         continue
+                    self.just.add(event.key)
                     if event.key == pygame.K_ESCAPE:
                         self.on_escape()
                     elif event.key == pygame.K_RETURN:
                         if self.state == "victory":
                             self.start_new_game()
+                elif event.type == pygame.MOUSEMOTION:
+                    self.mouse_pos = self.to_canvas(event.pos)
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        self.mouse_pos = self.to_canvas(event.pos)
+                        self.mouse_clicked = True
+                    elif event.button == 3:
+                        if self.state in ("main_menu", "pause"):
+                            self.on_escape()
             self.update(dt)
             self.draw()
             pygame.display.flip()
@@ -360,7 +472,8 @@ class Game:
         self.messages = [m for m in self.messages if m[3] > 0]
 
         if self.state in ("main_menu", "pause"):
-            self.menu.update(self.just)
+            self.menu.update(self.just, self.mouse_pos, self.mouse_clicked)
+            self.mouse_clicked = False
             return
         if self.state == "died":
             self.death_timer -= dt
@@ -543,13 +656,14 @@ class Game:
             return False
         return self.bonfire.in_range(p.rect.center)
 
+    def to_canvas(self, pos):
+        w, h = self.screen.get_size()
+        return (pos[0] * WIDTH / w, pos[1] * HEIGHT / h)
+
     def draw_main_menu(self, canvas):
         dark = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         dark.fill((0, 0, 0, 190))
         canvas.blit(dark, (0, 0))
-        if not self.menu.stack:
-            sub = self.fonts["normal"].render(i18n.t("game_subtitle"), True, GRAY)
-            canvas.blit(sub, sub.get_rect(center=(WIDTH // 2, 215)))
         self.menu.draw(canvas, self.fonts)
         if not self.menu.stack:
             self.draw_control_hints(canvas)
