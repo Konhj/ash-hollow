@@ -2,8 +2,9 @@ LANG = "en"
 
 STRINGS = {
     "game_title": {"en": "ASH HOLLOW", "zh": "ASH HOLLOW"},
-    "boss_name": {"en": "ABYSS WATCHER", "zh": "深渊监视者"},
-    "boss_subtitle": {"en": "HEIR OF THE EMBERS", "zh": "余烬的继承者"},
+    "boss_name": {"en": "ASH HUNTER", "zh": "灰烬猎人"},
+    "boss2_name": {"en": "ABYSS WATCHER", "zh": "深渊监视者"},
+    "boss2_subtitle": {"en": "FARRON'S UNDEAD LEGION", "zh": "法兰不死队"},
     "firelink": {"en": "FIRELINK SHRINE", "zh": "传火祭祀场"},
     "unkindled": {"en": "UNKINDLED", "zh": "无火余烬"},
     "new_game": {"en": "NEW GAME", "zh": "新游戏"},

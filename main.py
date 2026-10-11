@@ -1388,9 +1388,6 @@ class Game:
         img = self.fonts["huge"].render(i18n.t("boss_name"), True, (220, 60, 40))
         img.set_alpha(alpha)
         surf.blit(img, img.get_rect(center=(WIDTH // 2, 190)))
-        sub = self.fonts["big"].render(i18n.t("boss_subtitle"), True, GRAY)
-        sub.set_alpha(alpha)
-        surf.blit(sub, sub.get_rect(center=(WIDTH // 2, 260)))
 
     def draw_messages(self, surf):
         y = 310
