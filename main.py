@@ -1378,7 +1378,7 @@ class Game:
         pygame.draw.rect(surf, color, (x, y, 16, 22), border_radius=3)
         pygame.draw.rect(surf, (200, 200, 210), (x + 5, y - 6, 6, 8), border_radius=2)
 
-    def draw_banner(self, surf):
+    def draw_banner(self, surf, subtitle_key=None):
         bt = self.boss.aggro_banner
         if bt <= 0:
             return
@@ -1388,6 +1388,10 @@ class Game:
         img = self.fonts["huge"].render(i18n.t("boss_name"), True, (220, 60, 40))
         img.set_alpha(alpha)
         surf.blit(img, img.get_rect(center=(WIDTH // 2, 190)))
+        if subtitle_key:
+            sub = self.fonts["big"].render(i18n.t(subtitle_key), True, GRAY)
+            sub.set_alpha(alpha)
+            surf.blit(sub, sub.get_rect(center=(WIDTH // 2, 330)))
 
     def draw_messages(self, surf):
         y = 310
