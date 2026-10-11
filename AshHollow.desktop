@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Ash Hollow
+Comment=A tiny souls-like
+Exec=/home/konhj/DarkSouls/run.sh
+Icon=/home/konhj/DarkSouls/icon.png
+Terminal=false
+Categories=Game;
