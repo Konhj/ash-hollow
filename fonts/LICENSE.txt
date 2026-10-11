@@ -4,13 +4,9 @@ Fonts bundled with this game:
   SIL Open Font License 1.1
   https://github.com/google/fonts/tree/main/ofl/ebgaramond
 
-- Cormorant (fonts/cormorant.ttf)
+- Cinzel (fonts/cinzel.ttf)
   SIL Open Font License 1.1
-  https://github.com/google/fonts/tree/main/ofl/cormorant
-
-- UnifrakturMaguntia (fonts/unifrakturmaguntia.ttf)
-  SIL Open Font License 1.1
-  https://github.com/google/fonts/tree/main/ofl/unifrakturmaguntia
+  https://github.com/google/fonts/tree/main/ofl/cinzel
 
 - Noto Serif CJK SC / Source Han Serif (fonts/noto-serif-sc.ttf)
   SIL Open Font License 1.1
