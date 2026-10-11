@@ -167,8 +167,9 @@ class Menu:
 
     def draw(self, surf, fonts, title_font=None):
         if self.title:
+            title = self.title() if callable(self.title) else self.title
             tf = title_font if (self.title_font and title_font is not None) else fonts["big"]
-            img = tf.render(self.title, True, (220, 220, 228))
+            img = tf.render(title, True, (220, 220, 228))
             surf.blit(img, img.get_rect(center=(WIDTH // 2, 150)))
         visible = self.visible_indices()
         n = len(visible)
@@ -389,7 +390,7 @@ class Game:
                 "action": lambda: self.build_confirm("confirm_quit", self.quit_game),
             },
         ]
-        self.menu.set(t("game_title"), items)
+        self.menu.set(lambda: t("game_title"), items)
 
     def build_pause_menu(self):
         t = i18n.t
@@ -401,7 +402,7 @@ class Game:
                 "action": lambda: self.build_confirm("confirm_save_exit", self.save_and_exit),
             },
         ]
-        self.menu.set(t("pause"), items)
+        self.menu.set(lambda: t("pause"), items)
 
     def build_confirm(self, question_key, yes_action):
         t = i18n.t
@@ -409,7 +410,7 @@ class Game:
             {"label": lambda: t("yes"), "action": yes_action},
             {"label": lambda: t("no"), "action": lambda: self.menu.pop()},
         ]
-        self.menu.push(t(question_key), items, start_y=330, step=60)
+        self.menu.push(lambda: t(question_key), items, start_y=330, step=60)
 
     def binding_conflicts(self):
         counts = {}
@@ -439,7 +440,7 @@ class Game:
             {"label": lambda: t("key_bindings"), "action": self.build_key_menu},
             {"label": lambda: t("back"), "action": lambda: self.menu.pop()},
         ]
-        self.menu.push(t("settings"), items, hint=lambda: (t("adjust_hint"), GRAY))
+        self.menu.push(lambda: t("settings"), items, hint=lambda: (t("adjust_hint"), GRAY))
 
     def build_key_menu(self):
         t = i18n.t
@@ -466,7 +467,7 @@ class Game:
                 return (t("key_conflict"), (255, 90, 90))
             return None
 
-        self.menu.push(t("key_bindings"), items, start_y=250, step=60, columns=2, hint=conflict_hint, font_key="normal")
+        self.menu.push(lambda: t("key_bindings"), items, start_y=250, step=60, columns=2, hint=conflict_hint, font_key="normal")
 
     def start_new_game(self):
         self.new_game()
