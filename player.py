@@ -337,8 +337,6 @@ class Player:
             pygame.draw.rect(tmp, (48, 48, 56), (22, 26, 26, 18), border_radius=3)
             pygame.draw.circle(tmp, (150, 140, 128), (35, 16), 8)
             tip = (35 + fx * 24, 30 + fy * 24)
-            if self.state == "attack":
-                tip = (35 + fx * 34, 30 + fy * 34)
             if self.state == "riposte":
                 tip = (35 + fx * 38, 30 + fy * 38)
                 pygame.draw.line(tmp, (255, 240, 160), (35 + fx * 8, 30 + fy * 8), tip, 5)
