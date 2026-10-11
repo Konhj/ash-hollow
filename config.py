@@ -17,6 +17,7 @@ DEFAULT_BINDINGS = {
     "estus": pygame.K_f,
     "interact": pygame.K_e,
     "sprint": pygame.K_LSHIFT,
+    "inventory": pygame.K_TAB,
 }
 
 DEFAULTS = {

@@ -1,0 +1,130 @@
+# 物品数据框架:新增物品只需在此添加条目。
+# type: weapon / armor / talisman
+# slot: mainhand / offhand / armor / talisman
+# weapon stats: damage, speed(倍率, 1.0 为基准)
+# armor stats: defense
+# talisman effect: hp_up / stamina_up (数值加成)
+
+ITEMS = {
+    "broadsword": {
+        "name": {"en": "BROADSWORD", "zh": "阔剑"},
+        "type": "weapon",
+        "slot": "mainhand",
+        "stats": {"damage": 35, "speed": 1.0},
+        "desc": {
+            "en": "A reliable standard sword, well balanced.",
+            "zh": "标准可靠的直剑,各方面均衡。",
+        },
+    },
+    "longsword": {
+        "name": {"en": "LONGSWORD", "zh": "长剑"},
+        "type": "weapon",
+        "slot": "mainhand",
+        "stats": {"damage": 42, "speed": 0.9},
+        "desc": {
+            "en": "Longer blade, heavier swing.",
+            "zh": "更长的剑刃,挥动略慢。",
+        },
+    },
+    "greatsword": {
+        "name": {"en": "GREATSWORD", "zh": "巨剑"},
+        "type": "weapon",
+        "slot": "mainhand",
+        "stats": {"damage": 60, "speed": 0.65},
+        "desc": {
+            "en": "Slow but devastating.",
+            "zh": "缓慢但破坏力惊人。",
+        },
+    },
+    "dagger": {
+        "name": {"en": "DAGGER", "zh": "短剑"},
+        "type": "weapon",
+        "slot": "offhand",
+        "stats": {"damage": 18, "speed": 1.5},
+        "desc": {
+            "en": "A quick off-hand blade.",
+            "zh": "快速的副手利刃。",
+        },
+    },
+    "knight_armor": {
+        "name": {"en": "KNIGHT ARMOR", "zh": "骑士铠甲"},
+        "type": "armor",
+        "slot": "armor",
+        "stats": {"defense": 18},
+        "desc": {
+            "en": "Solid plate armor of a knight.",
+            "zh": "骑士的厚重板甲。",
+        },
+    },
+    "leather_armor": {
+        "name": {"en": "LEATHER ARMOR", "zh": "皮甲"},
+        "type": "armor",
+        "slot": "armor",
+        "stats": {"defense": 8},
+        "desc": {
+            "en": "Light leather armor.",
+            "zh": "轻便的皮甲。",
+        },
+    },
+    "life_talisman": {
+        "name": {"en": "LIFE TALISMAN", "zh": "生命护符"},
+        "type": "talisman",
+        "slot": "talisman",
+        "stats": {},
+        "effect": {"hp_up": 20},
+        "desc": {
+            "en": "Raises maximum HP by 20.",
+            "zh": "最大生命 +20。",
+        },
+    },
+    "stamina_talisman": {
+        "name": {"en": "STAMINA TALISMAN", "zh": "精力护符"},
+        "type": "talisman",
+        "slot": "talisman",
+        "stats": {},
+        "effect": {"stamina_up": 20},
+        "desc": {
+            "en": "Raises maximum stamina by 20.",
+            "zh": "最大精力 +20。",
+        },
+    },
+    "fire_talisman": {
+        "name": {"en": "FIRE TALISMAN", "zh": "火焰护符"},
+        "type": "talisman",
+        "slot": "talisman",
+        "stats": {},
+        "effect": {},
+        "desc": {
+            "en": "A dormant charm, to be awakened in future updates.",
+            "zh": "沉睡的护符,未来的版本中将被唤醒。",
+        },
+    },
+}
+
+DEFAULT_INVENTORY = ["broadsword", "dagger", "leather_armor", "life_talisman", "fire_talisman"]
+DEFAULT_EQUIPMENT = {
+    "mainhand": "broadsword",
+    "offhand": None,
+    "armor": None,
+    "talisman1": None,
+    "talisman2": None,
+    "talisman3": None,
+}
+
+
+def get(item_id):
+    return ITEMS.get(item_id)
+
+
+def name(item_id, lang="en"):
+    item = ITEMS.get(item_id)
+    if not item:
+        return "?"
+    return item["name"].get(lang, item["name"]["en"])
+
+
+def desc(item_id, lang="en"):
+    item = ITEMS.get(item_id)
+    if not item:
+        return ""
+    return item["desc"].get(lang, item["desc"]["en"])

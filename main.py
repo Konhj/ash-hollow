@@ -13,6 +13,7 @@ from effects import Particles
 import config
 import i18n
 import changelog
+import items as items_data
 
 if sys.platform == "win32":
     try:
@@ -35,6 +36,7 @@ KEY_ACTIONS = [
     ("estus", "estus"),
     ("interact", "rest"),
     ("sprint", "sprint"),
+    ("inventory", "inventory"),
 ]
 MOVE_DIRS = {"move_up": "up", "move_down": "down", "move_left": "left", "move_right": "right"}
 
@@ -251,6 +253,11 @@ class Game:
         self.cl_rects = []
         self.room = "hub"
         self.hub_banner = 0.0
+        self.inv_tab = 0
+        self.inv_hover = None
+        self.inv_cells = []
+        self.inv_equip_cells = []
+        self.inv_tab_rects = []
         self.state = "main_menu"
         self.build_main_menu()
         self.new_game()
@@ -518,10 +525,12 @@ class Game:
             return
         config.save_game(
             {
-                "version": 2,
+                "version": 3,
                 "room": self.room,
                 "player": {"x": p.x, "y": p.y, "hp": p.hp, "estus": p.estus},
                 "boss": {"x": b.x, "y": b.y, "hp": b.hp, "aggro": b.aggro},
+                "inventory": list(p.inventory),
+                "equipment": dict(p.equipment),
             }
         )
 
@@ -535,9 +544,24 @@ class Game:
         bd = data.get("boss", {})
         p.x = pd.get("x", p.x)
         p.y = pd.get("y", p.y)
-        p.hp = min(PLAYER_MAX_HP, max(1, int(pd.get("hp", p.hp))))
+        p.hp = min(p.max_hp(), max(1, int(pd.get("hp", p.hp))))
         p.estus = min(ESTUS_MAX, max(0, int(pd.get("estus", p.estus))))
         p.sync_rect()
+        inv = data.get("inventory")
+        if isinstance(inv, list):
+            valid = [i for i in inv if items_data.get(i)]
+            if valid:
+                p.inventory = valid
+        eq = data.get("equipment")
+        if isinstance(eq, dict):
+            for k in p.equipment:
+                v = eq.get(k)
+                if v and items_data.get(v):
+                    p.equipment[k] = v
+                else:
+                    p.equipment[k] = None
+        p._prev_max_hp = p.max_hp()
+        p.hp = min(p.max_hp(), p.hp)
         b.x = bd.get("x", b.x)
         b.y = bd.get("y", b.y)
         b.hp = min(b.max_hp, max(1, int(bd.get("hp", b.hp))))
@@ -559,6 +583,9 @@ class Game:
     def on_escape(self):
         if self.state == "main_menu" and self.cl_mode:
             self.cl_back()
+            return
+        if self.state == "inventory":
+            self.state = "play"
             return
         if self.state == "play":
             self.build_pause_menu()
@@ -645,6 +672,15 @@ class Game:
         if self.state == "victory":
             self.particles.update(dt)
             return
+        if self.state == "inventory":
+            self.update_inventory()
+            self.mouse_clicked = False
+            return
+
+        if self.cfg["bindings"]["inventory"] in self.just:
+            self.state = "inventory"
+            self.inv_hover = None
+            return
 
         t = i18n.t
         p = self.player
@@ -708,7 +744,7 @@ class Game:
                     if b.aggro and not b.dead:
                         self.message(t("cannot_rest"), RED, 1.4)
                     else:
-                        p.hp = PLAYER_MAX_HP
+                        p.hp = p.max_hp()
                         p.estus = ESTUS_MAX
                         b.reset()
                         self.save_current()
@@ -731,14 +767,14 @@ class Game:
             hb = p.get_attack_hitbox()
             if hb.colliderect(b.rect):
                 p.attack_landed = True
-                b.take_damage(ATTACK_DAMAGE)
+                b.take_damage(p.attack_damage())
                 self.particles.spawn(hb.centerx, hb.centery, (255, 220, 120), 6, 3.0, 0.3)
 
         if self.room == "arena" and p.state == "riposte" and not p.riposte_done:
             if (RIPOSTE_TIME - p.state_timer) >= 0.25:
                 p.riposte_done = True
                 if not b.dead and p.center_dist(b) < 160:
-                    b.take_damage(RIPOSTE_DAMAGE)
+                    b.take_damage(p.attack_damage() * 5)
                     b.state = "recover"
                     b.state_timer = 0.8
                     self.shake = 1.2
@@ -783,7 +819,7 @@ class Game:
         world = pygame.Surface((WIDTH, HEIGHT))
         world.blit(self.floor, (0, 0))
         pygame.draw.rect(world, WALL, (0, 0, WIDTH, HEIGHT), 6)
-        if self.state in ("play", "pause", "died", "victory"):
+        if self.state in ("play", "pause", "died", "victory", "inventory"):
             if self.room == "hub":
                 self.bonfire.draw(world)
                 self.draw_fog_gate(world, 1244)
@@ -810,7 +846,7 @@ class Game:
         else:
             canvas.blit(world, (0, 0))
 
-        if self.state in ("play", "pause", "died"):
+        if self.state in ("play", "pause", "died", "inventory"):
             self.draw_hud(canvas)
             if self.room == "hub":
                 self.draw_hub_banner(canvas)
@@ -828,6 +864,8 @@ class Game:
             self.draw_main_menu(canvas)
         elif self.state == "pause":
             self.draw_pause_overlay(canvas)
+        elif self.state == "inventory":
+            self.draw_inventory(canvas)
 
         if self.fade > 0:
             ov = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -845,6 +883,238 @@ class Game:
         if self.room != "hub" or p.dead or (b.aggro and not b.dead):
             return False
         return self.bonfire.in_range(p.rect.center)
+
+    def equip_item(self, item_id):
+        item = items_data.get(item_id)
+        if not item:
+            return
+        slot = item["slot"]
+        p = self.player
+        if slot == "talisman":
+            placed = False
+            for i in (1, 2, 3):
+                key = f"talisman{i}"
+                if p.equipment[key] is None:
+                    p.equipment[key] = item_id
+                    placed = True
+                    break
+            if not placed:
+                p.equipment["talisman1"] = item_id
+        else:
+            p.equipment[slot] = item_id
+        p.refresh_max_hp()
+        self.save_current()
+
+    def unequip_slot(self, key):
+        self.player.equipment[key] = None
+        self.player.refresh_max_hp()
+        self.save_current()
+
+    def update_inventory(self):
+        just = self.just
+        mp = self.mouse_pos
+        click = self.mouse_clicked
+        hover = None
+        if click:
+            for i, r in enumerate(self.inv_tab_rects):
+                if r.collidepoint(mp):
+                    self.inv_tab = i
+                    click = False
+                    break
+        if click:
+            for cell in self.inv_cells:
+                if cell["rect"].collidepoint(mp):
+                    if cell["item"]:
+                        self.equip_item(cell["item"])
+                    break
+            else:
+                for slot in self.inv_equip_cells:
+                    if slot["rect"].collidepoint(mp):
+                        if self.player.equipment.get(slot["key"]):
+                            self.unequip_slot(slot["key"])
+                        break
+        for cell in self.inv_cells:
+            if cell["rect"].collidepoint(mp):
+                hover = cell["item"]
+                break
+        else:
+            for slot in self.inv_equip_cells:
+                if slot["rect"].collidepoint(mp):
+                    hover = self.player.equipment.get(slot["key"])
+                    break
+        self.inv_hover = hover
+
+    def tooltip_lines(self, item_id):
+        t = i18n.t
+        lang = i18n.get_lang()
+        item = items_data.get(item_id)
+        if not item:
+            return []
+        type_label = {
+            "weapon": t("cat_weapons"),
+            "armor": t("cat_armor"),
+            "talisman": t("cat_talismans"),
+        }[item["type"]]
+        lines = [items_data.name(item_id, lang), type_label]
+        if item["type"] == "weapon":
+            lines.append(f"{t('damage')}: {item['stats']['damage']}")
+            lines.append(f"{t('speed')}: {item['stats']['speed']}")
+            slot_key = "slot_mainhand" if item["slot"] == "mainhand" else "slot_offhand"
+            lines.append(t(slot_key))
+        elif item["type"] == "armor":
+            lines.append(f"{t('defense')}: {item['stats']['defense']}")
+        elif item["type"] == "talisman":
+            for k, v in item.get("effect", {}).items():
+                lines.append(f"{t(k)} +{v}")
+        desc_text = items_data.desc(item_id, lang)
+        if desc_text:
+            lines.append("")
+            lines += self.wrap_text(desc_text, self.fonts["small"], 250)
+        return lines
+
+    def fit_text(self, text, font, max_w, color):
+        img = font.render(text, True, color)
+        if img.get_width() > max_w:
+            scale = max_w / img.get_width()
+            img = pygame.transform.smoothscale(
+                img, (max_w, max(8, int(img.get_height() * scale)))
+            )
+        return img
+
+    def draw_item_icon(self, surf, item_id, cx, cy):
+        item = items_data.get(item_id)
+        if not item:
+            return
+        if item["type"] == "weapon":
+            pygame.draw.line(surf, (210, 210, 220), (cx - 18, cy + 16), (cx + 18, cy - 16), 5)
+            pygame.draw.line(surf, (140, 110, 60), (cx - 28, cy + 22), (cx - 12, cy + 12), 6)
+        elif item["type"] == "armor":
+            pygame.draw.rect(surf, (150, 150, 165), (cx - 16, cy - 18, 32, 36), border_radius=6)
+            pygame.draw.rect(surf, (90, 90, 100), (cx - 8, cy - 10, 16, 20), border_radius=3)
+        elif item["type"] == "talisman":
+            pygame.draw.circle(surf, (235, 170, 70), (cx, cy), 13, 3)
+            pygame.draw.circle(surf, (235, 170, 70), (cx, cy), 4)
+
+    def draw_character_model(self, surf, cx, cy):
+        pygame.draw.ellipse(surf, (20, 20, 26), (cx - 55, cy + 78, 110, 22))
+        pygame.draw.rect(surf, (68, 68, 80), (cx - 32, cy - 20, 64, 100), border_radius=8)
+        pygame.draw.rect(surf, (48, 48, 56), (cx - 26, cy - 12, 52, 60), border_radius=6)
+        pygame.draw.circle(surf, (150, 140, 128), (cx, cy - 38), 22)
+        pygame.draw.rect(surf, (60, 60, 70), (cx - 28, cy - 46, 56, 14), border_radius=4)
+        pygame.draw.line(surf, (200, 200, 214), (cx + 40, cy), (cx + 88, cy - 40), 7)
+        pygame.draw.line(surf, (140, 110, 60), (cx + 30, cy + 12), (cx + 46, cy - 2), 6)
+
+    def draw_inventory(self, canvas):
+        t = i18n.t
+        lang = i18n.get_lang()
+        f = self.fonts
+        p = self.player
+        dark = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        dark.fill((0, 0, 0, 200))
+        canvas.blit(dark, (0, 0))
+
+        left = pygame.Surface((400, 640), pygame.SRCALPHA)
+        left.fill((22, 22, 30, 225))
+        canvas.blit(left, (30, 40))
+        pygame.draw.rect(canvas, (90, 90, 100), (30, 40, 400, 640), 2)
+
+        title = f["normal"].render(t("inventory"), True, (220, 220, 228))
+        canvas.blit(title, title.get_rect(center=(230, 70)))
+
+        self.draw_character_model(canvas, 230, 165)
+        eq_name = items_data.name(p.equipment["mainhand"], lang) if p.equipment["mainhand"] else t("empty")
+        img = self.fit_text(eq_name, f["small"], 200, (200, 200, 210))
+        canvas.blit(img, img.get_rect(center=(230, 288)))
+
+        slot_defs = [
+            ("mainhand", t("slot_mainhand")),
+            ("offhand", t("slot_offhand")),
+            ("armor", t("slot_armor")),
+            ("talisman1", t("slot_talisman")),
+            ("talisman2", t("slot_talisman")),
+            ("talisman3", t("slot_talisman")),
+        ]
+        self.inv_equip_cells = []
+        for i, (key, label) in enumerate(slot_defs):
+            col, row = i % 3, i // 3
+            cx = 30 + 46 + col * 121
+            cy = 40 + 335 + row * 121
+            rect = pygame.Rect(cx - 52, cy - 52, 104, 104)
+            pygame.draw.rect(canvas, (35, 35, 44), rect, border_radius=4)
+            pygame.draw.rect(canvas, (110, 110, 122), rect, 2, border_radius=4)
+            lab = f["small"].render(label, True, (150, 150, 160))
+            canvas.blit(lab, lab.get_rect(center=(cx, cy - 36)))
+            item_id = p.equipment[key]
+            if item_id:
+                self.draw_item_icon(canvas, item_id, cx, cy + 6)
+                nm = self.fit_text(items_data.name(item_id, lang), f["small"], 92, (225, 225, 232))
+                canvas.blit(nm, nm.get_rect(center=(cx, cy + 34)))
+            else:
+                dash = f["normal"].render("-", True, (90, 90, 98))
+                canvas.blit(dash, dash.get_rect(center=(cx, cy + 8)))
+            self.inv_equip_cells.append({"rect": rect, "key": key, "item": item_id})
+
+        right = pygame.Surface((790, 640), pygame.SRCALPHA)
+        right.fill((22, 22, 30, 225))
+        canvas.blit(right, (460, 40))
+        pygame.draw.rect(canvas, (90, 90, 100), (460, 40, 790, 640), 2)
+
+        tabs = [t("cat_all"), t("cat_weapons"), t("cat_armor"), t("cat_talismans")]
+        self.inv_tab_rects = []
+        for i, label in enumerate(tabs):
+            rect = pygame.Rect(480 + i * 158, 60, 150, 36)
+            sel = i == self.inv_tab
+            pygame.draw.rect(canvas, (60, 60, 74) if sel else (35, 35, 44), rect, border_radius=4)
+            pygame.draw.rect(canvas, YELLOW if sel else (110, 110, 122), rect, 2, border_radius=4)
+            img = f["small"].render(label, True, YELLOW if sel else (200, 200, 210))
+            canvas.blit(img, img.get_rect(center=rect.center))
+            self.inv_tab_rects.append(rect)
+
+        cat_type = [None, "weapon", "armor", "talisman"][self.inv_tab]
+        owned = [i for i in p.inventory if items_data.get(i)]
+        if cat_type:
+            owned = [i for i in owned if items_data.get(i)["type"] == cat_type]
+
+        self.inv_cells = []
+        for idx, item_id in enumerate(owned):
+            col, row = idx % 6, idx // 6
+            cx = 486 + col * 116 + 52
+            cy = 130 + row * 116 + 52
+            rect = pygame.Rect(cx - 52, cy - 52, 104, 104)
+            equipped = item_id in p.equipment.values()
+            pygame.draw.rect(canvas, (35, 35, 44), rect, border_radius=4)
+            pygame.draw.rect(canvas, YELLOW if equipped else (110, 110, 122), rect, 2, border_radius=4)
+            self.draw_item_icon(canvas, item_id, cx, cy - 4)
+            nm = self.fit_text(items_data.name(item_id, lang), f["small"], 92, (225, 225, 232))
+            canvas.blit(nm, nm.get_rect(center=(cx, cy + 34)))
+            self.inv_cells.append({"rect": rect, "item": item_id})
+
+        if self.inv_hover:
+            lines = self.tooltip_lines(self.inv_hover)
+            if lines:
+                pad = 10
+                widths = [f["small"].render(l, True, (255, 255, 255)).get_width() for l in lines]
+                w = min(300, max(widths) + pad * 2)
+                h = len(lines) * 24 + pad * 2
+                mx, my = self.mouse_pos
+                tx, ty = mx + 20, my + 20
+                if tx + w > WIDTH - 10:
+                    tx = mx - w - 20
+                if ty + h > HEIGHT - 10:
+                    ty = my - h - 20
+                box = pygame.Surface((w, h), pygame.SRCALPHA)
+                box.fill((10, 10, 15, 238))
+                pygame.draw.rect(box, (160, 160, 172), (0, 0, w, h), 1)
+                y = pad
+                for i, line in enumerate(lines):
+                    if line == "":
+                        y += 8
+                        continue
+                    color = YELLOW if i == 0 else (205, 205, 213)
+                    img = f["small"].render(line, True, color)
+                    box.blit(img, (pad, y))
+                    y += 24
+                canvas.blit(box, (tx, ty))
 
     def draw_interact_hint(self, surf, x, y):
         key = config.key_name(self.cfg["bindings"]["interact"])
@@ -1010,8 +1280,8 @@ class Game:
     def draw_hud(self, surf):
         label = self.fonts["small"].render(i18n.t("unkindled"), True, GRAY)
         surf.blit(label, (30, 8))
-        draw_bar(surf, 30, 28, 260, 16, self.player.hp / PLAYER_MAX_HP, RED, DARK_RED)
-        draw_bar(surf, 30, 50, 220, 10, self.player.stamina / PLAYER_MAX_STAMINA, GREEN, DARK_GREEN)
+        draw_bar(surf, 30, 28, 260, 16, self.player.hp / self.player.max_hp(), RED, DARK_RED)
+        draw_bar(surf, 30, 50, 220, 10, self.player.stamina / self.player.max_stamina(), GREEN, DARK_GREEN)
         for i in range(ESTUS_MAX):
             self.draw_flask(surf, 30 + i * 32, 68, i < self.player.estus)
         if self.room == "arena" and self.boss.aggro and not self.boss.dead:

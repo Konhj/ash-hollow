@@ -1,6 +1,7 @@
 import pygame
 
 from settings import *
+import items as items_data
 
 
 class Player:
@@ -10,11 +11,57 @@ class Player:
         self.rect = pygame.Rect(0, 0, 30, 46)
         self.facing = pygame.Vector2(1, 0)
         self.last_move = pygame.Vector2(0, 0)
+        self.inventory = list(items_data.DEFAULT_INVENTORY)
+        self.equipment = dict(items_data.DEFAULT_EQUIPMENT)
         self.reset_stats()
 
+    def talisman_effects(self):
+        out = {}
+        for i in (1, 2, 3):
+            tid = self.equipment.get(f"talisman{i}")
+            item = items_data.get(tid) if tid else None
+            if item:
+                for k, v in item.get("effect", {}).items():
+                    out[k] = out.get(k, 0) + v
+        return out
+
+    def max_hp(self):
+        return PLAYER_MAX_HP + self.talisman_effects().get("hp_up", 0)
+
+    def max_stamina(self):
+        return PLAYER_MAX_STAMINA + self.talisman_effects().get("stamina_up", 0)
+
+    def defense(self):
+        d = 0
+        aid = self.equipment.get("armor")
+        item = items_data.get(aid) if aid else None
+        if item:
+            d += item["stats"].get("defense", 0)
+        return d
+
+    def attack_damage(self):
+        wid = self.equipment.get("mainhand")
+        item = items_data.get(wid) if wid else None
+        if item and item["type"] == "weapon":
+            return item["stats"].get("damage", ATTACK_DAMAGE)
+        return ATTACK_DAMAGE
+
+    def attack_speed(self):
+        wid = self.equipment.get("mainhand")
+        item = items_data.get(wid) if wid else None
+        if item and item["type"] == "weapon":
+            return item["stats"].get("speed", 1.0)
+        return 1.0
+
+    def refresh_max_hp(self):
+        new_max = self.max_hp()
+        self.hp = min(new_max, max(1, self.hp + (new_max - self._prev_max_hp)))
+        self._prev_max_hp = new_max
+
     def reset_stats(self):
-        self.hp = PLAYER_MAX_HP
-        self.stamina = PLAYER_MAX_STAMINA
+        self.hp = self.max_hp()
+        self._prev_max_hp = self.max_hp()
+        self.stamina = self.max_stamina()
         self.estus = ESTUS_MAX
         self.state = "idle"
         self.state_timer = 0.0
@@ -73,7 +120,7 @@ class Player:
             )
             sprinting = sprint_held and self.stamina > 0
             if not sprint_held:
-                self.stamina = min(PLAYER_MAX_STAMINA, self.stamina + STAMINA_REGEN * dt)
+                self.stamina = min(self.max_stamina(), self.stamina + STAMINA_REGEN * dt)
             if move.length_squared() > 0:
                 self.facing = move.copy()
                 spd = PLAYER_SPEED * SPRINT_MULT if sprinting else PLAYER_SPEED
@@ -94,7 +141,7 @@ class Player:
             self.state_timer -= dt
             if self.state_timer <= 0:
                 if self.state == "drink":
-                    self.hp = min(PLAYER_MAX_HP, self.hp + ESTUS_HEAL)
+                    self.hp = min(self.max_hp(), self.hp + ESTUS_HEAL)
                     self.estus -= 1
                     self.just_drank = True
                 self.state = "idle"
@@ -104,7 +151,8 @@ class Player:
             return "out_of_stamina"
         self.stamina -= ATTACK_COST
         self.state = "attack"
-        self.state_timer = ATTACK_TIME
+        self.attack_duration = ATTACK_TIME / self.attack_speed()
+        self.state_timer = self.attack_duration
         self.attack_landed = False
 
     def start_roll(self):
@@ -145,8 +193,10 @@ class Player:
     def attack_active(self):
         if self.state != "attack":
             return False
-        elapsed = ATTACK_TIME - self.state_timer
-        return ATTACK_ACTIVE_START <= elapsed <= ATTACK_ACTIVE_END
+        if self.attack_duration <= 0:
+            return False
+        frac = (self.attack_duration - self.state_timer) / self.attack_duration
+        return 0.22 <= frac <= 0.61
 
     def get_attack_hitbox(self):
         fx, fy = self.facing
@@ -157,7 +207,8 @@ class Player:
     def take_damage(self, dmg, from_dir):
         if self.invuln > 0 or self.state == "roll":
             return False
-        self.hp -= dmg
+        final = max(1, int(dmg - self.defense()))
+        self.hp -= final
         self.flash = 0.18
         if from_dir is not None:
             self.x += from_dir.x * 14
