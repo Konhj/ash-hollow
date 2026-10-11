@@ -82,12 +82,24 @@ class Player:
             return item.get("attack_style", "slash")
         return "slash"
 
+    def current_attack_range(self):
+        item = None
+        if self.state == "attack" and getattr(self, "attack_is_offhand", False):
+            oid = self.equipment.get("offhand")
+            item = items_data.get(oid) if oid else None
+        else:
+            wid = self.equipment.get("mainhand")
+            item = items_data.get(wid) if wid else None
+        if item and item["type"] == "weapon":
+            return item["stats"].get("range", ATTACK_RANGE)
+        return ATTACK_RANGE
+
     def draw_slash_effect(self, surf):
         fx, fy = self.facing
         ang = math.atan2(fy, fx)
         frac = (self.attack_duration - self.state_timer) / max(0.001, self.attack_duration)
         seg = pygame.Surface((150, 150), pygame.SRCALPHA)
-        r = 62
+        r = int(self.current_attack_range())
         for i, off in enumerate((0.0, -0.12, -0.24)):
             p = max(0.0, min(1.0, frac + off))
             a1 = math.radians(-60 + 120 * p - 9.25)
@@ -285,8 +297,10 @@ class Player:
 
     def get_attack_hitbox(self):
         fx, fy = self.facing
-        hb = pygame.Rect(0, 0, 74, 52)
-        hb.center = (self.rect.centerx + fx * 46, self.rect.centery + fy * 30)
+        rng = self.current_attack_range()
+        back = 12
+        hb = pygame.Rect(0, 0, rng - back, 52)
+        hb.center = (self.rect.centerx + fx * (rng + back) / 2, self.rect.centery + fy * 30)
         return hb
 
     def take_damage(self, dmg, from_dir):
