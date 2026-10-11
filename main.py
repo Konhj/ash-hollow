@@ -889,21 +889,24 @@ class Game:
             return False
         return self.bonfire.in_range(p.rect.center)
 
-    def equip_into(self, key, item_id):
+    def slot_accepts(self, key, item_id):
         item = items_data.get(item_id)
         if not item:
-            return
+            return False
         itype = item["type"]
         islot = item["slot"]
-        if key == "mainhand" and not (itype == "weapon" and islot == "mainhand"):
-            return
-        if key == "offhand" and not (itype == "weapon" and islot == "offhand"):
-            return
-        if key == "armor" and itype != "armor":
-            return
-        if key.startswith("talisman") and itype != "talisman":
-            return
-        if itype == "talisman" and item_id in self.player.equipment.values():
+        if key == "mainhand":
+            return itype == "weapon" and islot == "mainhand"
+        if key == "offhand":
+            return itype == "weapon" and islot == "offhand"
+        if key == "armor":
+            return itype == "armor"
+        if key.startswith("talisman"):
+            return itype == "talisman" and item_id not in self.player.equipment.values()
+        return False
+
+    def equip_into(self, key, item_id):
+        if not self.slot_accepts(key, item_id):
             return
         self.player.equipment[key] = item_id
         self.player.refresh_max_hp()
@@ -1104,12 +1107,18 @@ class Game:
             cy = 130 + row * 116 + 52
             rect = pygame.Rect(cx - 52, cy - 52, 104, 104)
             equipped = item_id in p.equipment.values()
+            compat = self.inv_selected_slot is not None and self.slot_accepts(self.inv_selected_slot, item_id)
             pygame.draw.rect(canvas, (35, 35, 44), rect, border_radius=4)
-            pygame.draw.rect(canvas, YELLOW if equipped else (110, 110, 122), rect, 2, border_radius=4)
+            if compat:
+                pygame.draw.rect(canvas, (255, 255, 255), rect, 3, border_radius=4)
+            elif equipped:
+                pygame.draw.rect(canvas, YELLOW, rect, 2, border_radius=4)
+            else:
+                pygame.draw.rect(canvas, (110, 110, 122), rect, 2, border_radius=4)
             self.draw_item_icon(canvas, item_id, cx, cy - 4)
             nm = self.fit_text(items_data.name(item_id, lang), f["small"], 92, (225, 225, 232))
             canvas.blit(nm, nm.get_rect(center=(cx, cy + 34)))
-            self.inv_cells.append({"rect": rect, "item": item_id})
+            self.inv_cells.append({"rect": rect, "item": item_id, "compat": compat})
 
         if self.inv_hover:
             lines = self.tooltip_lines(self.inv_hover)
