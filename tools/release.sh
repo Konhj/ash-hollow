@@ -16,7 +16,7 @@ grep -q "\"$ver\":" changelog.py || {
 }
 
 sed -i "s/^VERSION = .*/VERSION = \"$ver\"/" settings.py
-git add settings.py
+git add settings.py changelog.py
 git commit -m "Release v$ver"
 git tag "v$ver"
 git push origin main
