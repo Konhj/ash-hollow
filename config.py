@@ -20,6 +20,7 @@ DEFAULT_BINDINGS = {
 
 DEFAULTS = {
     "resolution": 2,
+    "display_mode": 0,
     "language": "en",
     "bindings": dict(DEFAULT_BINDINGS),
 }
@@ -55,7 +56,7 @@ def load_config():
     try:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-        for k in ("resolution", "language"):
+        for k in ("resolution", "display_mode", "language"):
             if k in data:
                 cfg[k] = data[k]
         if "bindings" in data and isinstance(data["bindings"], dict):
@@ -64,6 +65,8 @@ def load_config():
                     cfg["bindings"][k] = v
         if not (0 <= cfg["resolution"] < len(RESOLUTIONS)):
             cfg["resolution"] = DEFAULTS["resolution"]
+        if not (0 <= cfg["display_mode"] <= 2):
+            cfg["display_mode"] = DEFAULTS["display_mode"]
         if cfg["language"] not in ("en", "zh"):
             cfg["language"] = DEFAULTS["language"]
     except Exception:

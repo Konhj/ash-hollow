@@ -187,13 +187,12 @@ class Game:
         pygame.init()
         self.cfg = config.load_config()
         i18n.set_lang(self.cfg["language"])
-        self.screen = pygame.display.set_mode(RESOLUTIONS[self.cfg["resolution"]], pygame.RESIZABLE)
+        self.apply_display()
         pygame.display.set_caption("ASH HOLLOW")
         self.clock = pygame.time.Clock()
         self.fonts = {}
         self.load_fonts()
         self.canvas = pygame.Surface((WIDTH, HEIGHT))
-        self.disable_ime()
         self.floor = self.make_floor()
         self.particles = Particles()
         self.messages = []
@@ -275,14 +274,28 @@ class Game:
         except Exception:
             pass
 
-    def apply_resolution(self):
-        self.screen = pygame.display.set_mode(RESOLUTIONS[self.cfg["resolution"]], pygame.RESIZABLE)
+    def apply_display(self):
+        mode = self.cfg["display_mode"]
+        if mode == 0:
+            size, flags = RESOLUTIONS[self.cfg["resolution"]], pygame.RESIZABLE
+        elif mode == 1:
+            size, flags = (0, 0), pygame.NOFRAME
+        else:
+            size, flags = RESOLUTIONS[self.cfg["resolution"]], pygame.FULLSCREEN
+        self.screen = pygame.display.set_mode(size, flags)
+        if self.screen.get_width() < 64 or self.screen.get_height() < 64:
+            self.screen = pygame.display.set_mode(RESOLUTIONS[self.cfg["resolution"]], pygame.NOFRAME)
         self.disable_ime()
 
     def adjust_resolution(self, delta):
         n = len(RESOLUTIONS)
         self.cfg["resolution"] = (self.cfg["resolution"] + delta) % n
-        self.apply_resolution()
+        self.apply_display()
+        config.save_config(self.cfg)
+
+    def adjust_display_mode(self, delta):
+        self.cfg["display_mode"] = (self.cfg["display_mode"] + delta) % 3
+        self.apply_display()
         config.save_config(self.cfg)
 
     def adjust_language(self, delta):
@@ -354,11 +367,16 @@ class Game:
             w, h = RESOLUTIONS[self.cfg["resolution"]]
             return f"{t('resolution')}: {w} x {h}"
 
+        def display_label():
+            mode = ("mode_windowed", "mode_borderless", "mode_fullscreen")[self.cfg["display_mode"]]
+            return f"{t('display')}: {t(mode)}"
+
         def lang_label():
             cur = "lang_zh" if self.cfg["language"] == "zh" else "lang_en"
             return f"{t('language')}: {t(cur)}"
 
         items = [
+            {"label": display_label, "adjust": self.adjust_display_mode},
             {"label": res_label, "adjust": self.adjust_resolution},
             {"label": lang_label, "adjust": self.adjust_language},
             {"label": lambda: t("key_bindings"), "action": self.build_key_menu},
