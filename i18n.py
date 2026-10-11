@@ -36,6 +36,8 @@ STRINGS = {
     "pause": {"en": "PAUSE", "zh": "暂停"},
     "confirm_quit": {"en": "QUIT THE GAME?", "zh": "确定要退出游戏吗?"},
     "confirm_save_exit": {"en": "SAVE AND RETURN TO MAIN MENU?", "zh": "保存并返回主菜单吗?"},
+    "confirm_new_game": {"en": "START A NEW GAME?", "zh": "开始新游戏?"},
+    "overwrite_warning": {"en": "An existing save will be overwritten!", "zh": "已有的存档将被覆盖!"},
     "yes": {"en": "YES", "zh": "是"},
     "no": {"en": "NO", "zh": "否"},
     "adjust_hint": {"en": "USE LEFT / RIGHT ARROWS TO CHANGE", "zh": "使用左右方向键更改设置"},

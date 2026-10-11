@@ -58,8 +58,9 @@ class Menu:
         self.hit_rects = []
         self.font_key = "big"
         self.title_font = False
+        self.warning = None
 
-    def set(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big", title_font=False):
+    def set(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big", title_font=False, warning=None):
         self.title = title
         self.items = items
         self.selected = 0
@@ -69,9 +70,10 @@ class Menu:
         self.hint = hint
         self.font_key = font_key
         self.title_font = title_font
+        self.warning = warning
         self.hit_rects = []
 
-    def push(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big", title_font=False):
+    def push(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big", title_font=False, warning=None):
         self.stack.append(
             (
                 self.title,
@@ -83,9 +85,10 @@ class Menu:
                 self.hint,
                 self.font_key,
                 self.title_font,
+                self.warning,
             )
         )
-        self.set(title, items, start_y, step, columns, hint, font_key, title_font)
+        self.set(title, items, start_y, step, columns, hint, font_key, title_font, warning)
 
     def pop(self):
         if self.stack:
@@ -99,6 +102,7 @@ class Menu:
                 self.hint,
                 self.font_key,
                 self.title_font,
+                self.warning,
             ) = self.stack.pop()
             return True
         return False
@@ -171,6 +175,10 @@ class Menu:
             tf = title_font if (self.title_font and title_font is not None) else fonts["big"]
             img = tf.render(title, True, (220, 220, 228))
             surf.blit(img, img.get_rect(center=(WIDTH // 2, 150)))
+        if self.warning:
+            wtext = self.warning() if callable(self.warning) else self.warning
+            img = fonts["normal"].render(wtext, True, (235, 170, 80))
+            surf.blit(img, img.get_rect(center=(WIDTH // 2, 240)))
         visible = self.visible_indices()
         n = len(visible)
         rows = self.rows(n)
@@ -378,7 +386,7 @@ class Game:
     def build_main_menu(self):
         t = i18n.t
         items = [
-            {"label": lambda: t("new_game"), "action": self.start_new_game},
+            {"label": lambda: t("new_game"), "action": self.confirm_new_game},
             {
                 "label": lambda: t("continue"),
                 "action": self.load_and_continue,
@@ -404,13 +412,20 @@ class Game:
         ]
         self.menu.set(lambda: t("pause"), items)
 
-    def build_confirm(self, question_key, yes_action):
+    def build_confirm(self, question_key, yes_action, warning_key=None):
         t = i18n.t
         items = [
             {"label": lambda: t("yes"), "action": yes_action},
             {"label": lambda: t("no"), "action": lambda: self.menu.pop()},
         ]
-        self.menu.push(lambda: t(question_key), items, start_y=330, step=60)
+        warning = (lambda: t(warning_key)) if warning_key else None
+        self.menu.push(lambda: t(question_key), items, start_y=330, step=60, warning=warning)
+
+    def confirm_new_game(self):
+        if config.load_save() is None:
+            self.start_new_game()
+        else:
+            self.build_confirm("confirm_new_game", self.start_new_game, "overwrite_warning")
 
     def binding_conflicts(self):
         counts = {}
