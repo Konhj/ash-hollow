@@ -57,8 +57,9 @@ class Menu:
         self.hint = None
         self.hit_rects = []
         self.font_key = "big"
+        self.title_font = False
 
-    def set(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big"):
+    def set(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big", title_font=False):
         self.title = title
         self.items = items
         self.selected = 0
@@ -67,9 +68,10 @@ class Menu:
         self.columns = columns
         self.hint = hint
         self.font_key = font_key
+        self.title_font = title_font
         self.hit_rects = []
 
-    def push(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big"):
+    def push(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big", title_font=False):
         self.stack.append(
             (
                 self.title,
@@ -80,9 +82,10 @@ class Menu:
                 self.columns,
                 self.hint,
                 self.font_key,
+                self.title_font,
             )
         )
-        self.set(title, items, start_y, step, columns, hint, font_key)
+        self.set(title, items, start_y, step, columns, hint, font_key, title_font)
 
     def pop(self):
         if self.stack:
@@ -95,6 +98,7 @@ class Menu:
                 self.columns,
                 self.hint,
                 self.font_key,
+                self.title_font,
             ) = self.stack.pop()
             return True
         return False
@@ -161,9 +165,10 @@ class Menu:
                         item["action"]()
                     break
 
-    def draw(self, surf, fonts):
+    def draw(self, surf, fonts, title_font=None):
         if self.title:
-            img = fonts["big"].render(self.title, True, (220, 220, 228))
+            tf = title_font if (self.title_font and title_font is not None) else fonts["big"]
+            img = tf.render(self.title, True, (220, 220, 228))
             surf.blit(img, img.get_rect(center=(WIDTH // 2, 150)))
         visible = self.visible_indices()
         n = len(visible)
@@ -239,17 +244,38 @@ class Game:
         self.new_game()
 
     def load_fonts(self):
-        path = config.resource_path(os.path.join("fonts", "wqy-microhei.ttf"))
-        try:
-            self.fonts["small"] = pygame.font.Font(path, 22)
-            self.fonts["normal"] = pygame.font.Font(path, 30)
-            self.fonts["big"] = pygame.font.Font(path, 54)
-            self.fonts["huge"] = pygame.font.Font(path, 110)
-        except Exception:
-            self.fonts["small"] = pygame.font.Font(None, 22)
-            self.fonts["normal"] = pygame.font.Font(None, 30)
-            self.fonts["big"] = pygame.font.Font(None, 54)
-            self.fonts["huge"] = pygame.font.Font(None, 110)
+        def font_set(name):
+            path = config.resource_path(os.path.join("fonts", name))
+            try:
+                return {
+                    "small": pygame.font.Font(path, 22),
+                    "normal": pygame.font.Font(path, 30),
+                    "big": pygame.font.Font(path, 54),
+                    "huge": pygame.font.Font(path, 110),
+                }
+            except Exception:
+                return {
+                    "small": pygame.font.Font(None, 22),
+                    "normal": pygame.font.Font(None, 30),
+                    "big": pygame.font.Font(None, 54),
+                    "huge": pygame.font.Font(None, 110),
+                }
+
+        self.fonts_en = font_set("eb-garamond.ttf")
+        self.fonts_zh = font_set("noto-serif-sc.ttf")
+        self.fonts_cjk = self.fonts_zh
+        self.fonts = self.fonts_en if self.cfg["language"] == "en" else self.fonts_zh
+        self.title_font = None
+        for name in ("agmena.ttf", "agmena.otf", "cormorant.ttf"):
+            path = config.resource_path(os.path.join("fonts", name))
+            if os.path.exists(path):
+                try:
+                    self.title_font = pygame.font.Font(path, 72)
+                    break
+                except Exception:
+                    pass
+        if self.title_font is None:
+            self.title_font = self.fonts["big"]
 
     def make_floor(self):
         surf = pygame.Surface((WIDTH, HEIGHT))
@@ -331,6 +357,7 @@ class Game:
     def adjust_language(self, delta):
         self.cfg["language"] = "zh" if self.cfg["language"] == "en" else "en"
         i18n.set_lang(self.cfg["language"])
+        self.fonts = self.fonts_en if self.cfg["language"] == "en" else self.fonts_zh
         config.save_config(self.cfg)
 
     def set_binding(self, action, key):
@@ -764,7 +791,7 @@ class Game:
         self.cl_scroll = 0
         lines = []
         for entry in changelog.CHANGELOG.get(ver, []):
-            lines += self.wrap_text("- " + entry, self.fonts["normal"], 860)
+            lines += self.wrap_text("- " + entry, self.fonts_cjk["normal"], 860)
         self.cl_lines = lines
 
     def wrap_text(self, text, font, max_w):
@@ -814,17 +841,15 @@ class Game:
         if self.cl_mode:
             self.draw_changelog(canvas)
             return
-        self.menu.draw(canvas, self.fonts)
+        self.menu.draw(canvas, self.fonts, self.title_font)
         hover = self.version_rect.collidepoint(self.mouse_pos)
         color = YELLOW if hover else (110, 110, 120)
         ver_img = self.fonts["small"].render(f"v{VERSION}", True, color)
         self.version_rect = ver_img.get_rect(topleft=(12, HEIGHT - 28))
         canvas.blit(ver_img, self.version_rect)
-        if not self.menu.stack:
-            self.draw_control_hints(canvas)
 
     def draw_changelog(self, canvas):
-        f = self.fonts
+        f = self.fonts_cjk
         if self.cl_mode == "list":
             title = f["big"].render(i18n.t("changelog"), True, (220, 220, 228))
             canvas.blit(title, title.get_rect(center=(WIDTH // 2, 110)))
@@ -864,24 +889,6 @@ class Game:
         dark.fill((0, 0, 0, 170))
         canvas.blit(dark, (0, 0))
         self.menu.draw(canvas, self.fonts)
-
-    def draw_control_hints(self, surf):
-        b = self.cfg["bindings"]
-        kn = config.key_name
-        lines = [
-            f"{kn(b['move_up'])} {kn(b['move_down'])} {kn(b['move_left'])} {kn(b['move_right'])}   {i18n.t('move')}",
-            f"{kn(b['attack'])}   {i18n.t('attack')}",
-            f"{kn(b['roll'])}   {i18n.t('roll')}",
-            f"{kn(b['parry'])}   {i18n.t('parry')}",
-            f"{kn(b['estus'])}   {i18n.t('estus')}",
-            f"{kn(b['interact'])}   {i18n.t('rest')}",
-            f"ESC   {i18n.t('pause')}",
-        ]
-        y = 540
-        for line in lines:
-            img = self.fonts["small"].render(line, True, (140, 140, 150))
-            surf.blit(img, img.get_rect(center=(WIDTH // 2, y)))
-            y += 24
 
     def draw_hud(self, surf):
         label = self.fonts["small"].render(i18n.t("unkindled"), True, GRAY)

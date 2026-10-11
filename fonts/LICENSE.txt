@@ -1,7 +1,16 @@
-WenQuanYi Micro Hei (文泉驿微米黑)
+Fonts bundled with this game:
 
-Licensed under the Apache License, Version 2.0.
-See https://www.apache.org/licenses/LICENSE-2.0
-Or the GNU General Public License v3 (with font embedding exception).
+- EB Garamond (fonts/eb-garamond.ttf)
+  SIL Open Font License 1.1
+  https://github.com/google/fonts/tree/main/ofl/ebgaramond
 
-Source: https://wenq.org/
+- Cormorant (fonts/cormorant.ttf)
+  SIL Open Font License 1.1
+  https://github.com/google/fonts/tree/main/ofl/cormorant
+
+- Noto Serif CJK SC / Source Han Serif (fonts/noto-serif-sc.ttf)
+  SIL Open Font License 1.1
+  https://github.com/adobe-fonts/source-han-serif
+
+Optional: drop your licensed Agmena file as fonts/agmena.ttf
+or fonts/agmena.otf to use it for the main menu title.
