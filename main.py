@@ -1010,7 +1010,12 @@ class Game:
         item = items_data.get(item_id)
         if not item:
             return
-        if item["type"] == "weapon":
+        if item.get("subtype") == "shield":
+            pygame.draw.circle(surf, (70, 70, 82), (cx, cy), 15)
+            pygame.draw.circle(surf, (210, 210, 220), (cx, cy), 15, 3)
+            pygame.draw.circle(surf, (150, 150, 165), (cx, cy), 7)
+            pygame.draw.circle(surf, (110, 110, 122), (cx, cy), 3)
+        elif item["type"] == "weapon":
             pygame.draw.line(surf, (210, 210, 220), (cx - 18, cy + 16), (cx + 18, cy - 16), 5)
             pygame.draw.line(surf, (140, 110, 60), (cx - 28, cy + 22), (cx - 12, cy + 12), 6)
         elif item["type"] == "armor":
