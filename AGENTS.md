@@ -21,5 +21,6 @@ Run a test: `PYTHONPATH=. .venv/bin/python /tmp/opencode/<test>.py`
 
 ## Key architecture
 - Fixed 1280x720 canvas scaled to window; two rooms: "hub" (Firelink Shrine + bonfire) and "arena" (boss, entered via fog gate with interact key).
+- Items/equipment are data-driven in `items.py` (type: weapon/armor/talisman, slot: mainhand/offhand/armor/talisman). Weapon stats set player attack damage/speed, armor sets defense, talismans give hp_up/stamina_up effects. Inventory UI (TAB) in main.py.
 - Fonts bundled in `fonts/` (EB Garamond EN, Source Han Serif ZH, Cinzel title; agmena.ttf preferred if dropped in).
 - Config/save next to exe (or `ASH_HOLLOW_DIR` env override).
