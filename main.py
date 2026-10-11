@@ -818,6 +818,11 @@ class Game:
         mp = self.mouse_pos
         vers = list(changelog.CHANGELOG.keys())
         if self.cl_mode == "list":
+            if vers and len(self.cl_rects) == len(vers):
+                for i, r in enumerate(self.cl_rects):
+                    if r.collidepoint(mp):
+                        self.cl_sel = i
+                        break
             if pygame.K_UP in just or pygame.K_w in just:
                 self.cl_sel = max(0, self.cl_sel - 1)
             if pygame.K_DOWN in just or pygame.K_s in just:
