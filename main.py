@@ -390,7 +390,7 @@ class Game:
                 "action": lambda: self.build_confirm("confirm_quit", self.quit_game),
             },
         ]
-        self.menu.set(lambda: t("game_title"), items)
+        self.menu.set(lambda: t("game_title"), items, title_font=True)
 
     def build_pause_menu(self):
         t = i18n.t
