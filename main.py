@@ -659,14 +659,14 @@ class Game:
         self.particles.update(dt)
 
         if self.room == "hub":
+            p.x = min(p.x, 1175.0)
+            p.clamp()
             if random.random() < 0.35:
                 bx, by = self.bonfire.pos
                 self.particles.spawn(bx + random.uniform(-8, 8), by - 10, (255, 170, 50), 1, 1.2, 0.8)
-            if p.rect.right > 1240 and 200 < p.rect.centery < 520:
-                self.enter_arena()
         else:
-            if p.rect.left < 40 and 200 < p.rect.centery < 520:
-                self.exit_to_hub()
+            p.x = max(p.x, 105.0)
+            p.clamp()
             if b.state == "attack" and b.attack_kind == "charge":
                 self.particles.spawn(
                     b.rect.centerx - b.charge_dir.x * 40,
@@ -702,17 +702,24 @@ class Game:
                 r = p.start_drink()
                 if r:
                     self.message(t(r), RED, 1.4, "small")
-            elif keys[self.cfg["bindings"]["interact"]] and self.room == "hub" and self.bonfire.in_range(p.rect.center):
-                if b.aggro and not b.dead:
-                    self.message(t("cannot_rest"), RED, 1.4)
-                else:
-                    p.hp = PLAYER_MAX_HP
-                    p.estus = ESTUS_MAX
-                    b.reset()
-                    self.save_current()
-                    self.fade = 1.0
-                    self.message(t("bonfire_rested"), ORANGE, 1.6)
-                    self.message(t("game_saved"), ORANGE, 1.6)
+            elif keys[self.cfg["bindings"]["interact"]]:
+                if self.room == "hub" and self.bonfire.in_range(p.rect.center):
+                    if b.aggro and not b.dead:
+                        self.message(t("cannot_rest"), RED, 1.4)
+                    else:
+                        p.hp = PLAYER_MAX_HP
+                        p.estus = ESTUS_MAX
+                        b.reset()
+                        self.save_current()
+                        self.fade = 1.0
+                        self.message(t("bonfire_rested"), ORANGE, 1.6)
+                        self.message(t("game_saved"), ORANGE, 1.6)
+                elif self.room == "hub" and p.rect.right > 1150 and 200 < p.rect.centery < 520:
+                    self.enter_arena()
+                    self.fade = 0.8
+                elif self.room == "arena" and p.rect.left < 130 and 200 < p.rect.centery < 520:
+                    self.exit_to_hub()
+                    self.fade = 0.8
 
         if (
             self.room == "arena"
