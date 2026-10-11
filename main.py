@@ -1361,16 +1361,16 @@ class Game:
         surf.blit(label, (30, 8))
         w_hp = int(260 * (self.player.max_hp() / PLAYER_MAX_HP))
         w_st = int(220 * (self.player.max_stamina() / PLAYER_MAX_STAMINA))
-        draw_bar(surf, 30, 28, w_hp, 16, self.player.hp / self.player.max_hp(), RED, DARK_RED)
-        draw_bar(surf, 30, 50, w_st, 10, self.player.stamina / self.player.max_stamina(), GREEN, DARK_GREEN)
+        draw_bar(surf, 30, 36, w_hp, 16, self.player.hp / self.player.max_hp(), RED, DARK_RED)
+        draw_bar(surf, 30, 60, w_st, 10, self.player.stamina / self.player.max_stamina(), GREEN, DARK_GREEN)
         for i in range(ESTUS_MAX):
-            self.draw_flask(surf, 30 + i * 32, 68, i < self.player.estus)
+            self.draw_flask(surf, 30 + i * 32, 84, i < self.player.estus)
         if self.room == "arena" and self.boss.aggro and not self.boss.dead:
             w = 840
             x = (WIDTH - w) // 2
             y = HEIGHT - 58
             name = self.fonts["normal"].render(i18n.t("boss_name"), True, WHITE)
-            surf.blit(name, (x, y - 26))
+            surf.blit(name, name.get_rect(bottomleft=(x, y - 8)))
             draw_bar(surf, x, y, w, 18, self.boss.hp / self.boss.max_hp, (150, 20, 20), (60, 10, 10))
 
     def draw_flask(self, surf, x, y, filled):
