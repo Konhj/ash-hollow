@@ -716,7 +716,7 @@ class Game:
                 elif self.room == "hub" and p.rect.right > 1150 and 200 < p.rect.centery < 520:
                     self.enter_arena()
                     self.fade = 0.8
-                elif self.room == "arena" and p.rect.left < 130 and 200 < p.rect.centery < 520:
+                elif self.room == "arena" and self.boss.dead and p.rect.left < 130 and 200 < p.rect.centery < 520:
                     self.exit_to_hub()
                     self.fade = 0.8
 
@@ -787,7 +787,7 @@ class Game:
                 self.bonfire.draw(world)
                 self.draw_fog_gate(world, 1244)
             else:
-                self.draw_fog_gate(world, 0)
+                self.draw_fog_gate(world, 0, sealed=not self.boss.dead)
                 self.boss.draw(world)
             if not self.player.dead:
                 self.player.draw(world)
@@ -800,7 +800,7 @@ class Game:
                     if p.rect.right > 1150 and 200 < p.rect.centery < 520:
                         self.draw_interact_hint(world, 1195, 370)
                 else:
-                    if p.rect.left < 130 and 200 < p.rect.centery < 520:
+                    if p.rect.left < 130 and 200 < p.rect.centery < 520 and self.boss.dead:
                         self.draw_interact_hint(world, 85, 370)
         if self.shake > 0.02:
             ox = random.randint(-int(self.shake * 14), int(self.shake * 14))
@@ -854,14 +854,19 @@ class Game:
         pygame.draw.rect(surf, (200, 200, 210), rect, 2, border_radius=4)
         surf.blit(img, img.get_rect(center=rect.center))
 
-    def draw_fog_gate(self, surf, x):
+    def draw_fog_gate(self, surf, x, sealed=False):
         band = pygame.Surface((36, 340), pygame.SRCALPHA)
-        band.fill((200, 205, 215, 60))
+        if sealed:
+            band.fill((110, 115, 130, 95))
+            circle_color = (150, 155, 170, 80)
+        else:
+            band.fill((200, 205, 215, 60))
+            circle_color = (226, 229, 236, 95)
         tm = self.time
         for i in range(6):
             yy = 30 + ((tm * (16 + i * 7) + i * 53) % 280)
             xx = 6 + 24 * (0.5 + 0.5 * math.sin(tm * 2 + i * 2.1))
-            pygame.draw.circle(band, (226, 229, 236, 95), (int(xx), int(yy)), 9)
+            pygame.draw.circle(band, circle_color, (int(xx), int(yy)), 9)
         surf.blit(band, (x, 200))
 
     def draw_hub_banner(self, surf):
