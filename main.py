@@ -210,7 +210,7 @@ class Game:
         self.cfg = config.load_config()
         i18n.set_lang(self.cfg["language"])
         self.apply_display()
-        pygame.display.set_caption("ASH HOLLOW")
+        pygame.display.set_caption(f"ASH HOLLOW v{VERSION}")
         self.clock = pygame.time.Clock()
         self.fonts = {}
         self.load_fonts()
@@ -727,6 +727,8 @@ class Game:
         dark.fill((0, 0, 0, 190))
         canvas.blit(dark, (0, 0))
         self.menu.draw(canvas, self.fonts)
+        ver = self.fonts["small"].render(f"v{VERSION}", True, (110, 110, 120))
+        canvas.blit(ver, (12, HEIGHT - 28))
         if not self.menu.stack:
             self.draw_control_hints(canvas)
 
