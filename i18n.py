@@ -33,7 +33,7 @@ STRINGS = {
     "roll": {"en": "ROLL", "zh": "翻滚"},
     "parry": {"en": "PARRY", "zh": "弹反"},
     "estus": {"en": "ESTUS FLASK", "zh": "原素瓶"},
-    "rest": {"en": "REST AT BONFIRE", "zh": "在篝火休息"},
+    "rest": {"en": "INTERACT", "zh": "交互"},
     "pause": {"en": "PAUSE", "zh": "暂停"},
     "confirm_quit": {"en": "QUIT THE GAME?", "zh": "确定要退出游戏吗?"},
     "confirm_save_exit": {"en": "SAVE AND RETURN TO MAIN MENU?", "zh": "保存并返回主菜单吗?"},
@@ -53,8 +53,6 @@ STRINGS = {
     "riposte_msg": {"en": "RIPOSTE!", "zh": "处决!"},
     "cannot_rest": {"en": "CANNOT REST, FOE NEARBY", "zh": "敌人在附近,无法休息"},
     "bonfire_rested": {"en": "BONFIRE RESTED", "zh": "已在篝火休息"},
-    "respawned": {"en": "RESPAWNED AT BONFIRE", "zh": "在篝火复活"},
-    "rest_hint": {"en": "PRESS {key} TO REST", "zh": "按 {key} 休息"},
 }
 
 

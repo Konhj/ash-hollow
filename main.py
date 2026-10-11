@@ -330,11 +330,11 @@ class Game:
         p.facing = pygame.Vector2(-1, 0)
         p.sync_rect()
 
-    def message(self, text, color=WHITE, dur=1.4):
+    def message(self, text, color=WHITE, dur=1.4, size="big"):
         for m in self.messages:
             if m[0] == text:
                 return
-        self.messages.append([text, color, dur, dur])
+        self.messages.append([text, color, dur, dur, size])
 
     def on_player_hit(self):
         p = self.player
@@ -640,7 +640,6 @@ class Game:
                 self.hub_banner = 2.6
                 self.state = "play"
                 self.fade = 1.0
-                self.message(i18n.t("respawned"), ORANGE, 1.6)
             return
         if self.state == "victory":
             self.particles.update(dt)
@@ -690,19 +689,19 @@ class Game:
                 else:
                     r = p.start_attack()
                 if r:
-                    self.message(t(r), RED)
+                    self.message(t(r), RED, 1.4, "small")
             elif keys[self.cfg["bindings"]["roll"]]:
                 r = p.start_roll()
                 if r:
-                    self.message(t(r), RED)
+                    self.message(t(r), RED, 1.4, "small")
             elif keys[self.cfg["bindings"]["parry"]]:
                 r = p.start_parry()
                 if r:
-                    self.message(t(r), RED)
+                    self.message(t(r), RED, 1.4, "small")
             elif keys[self.cfg["bindings"]["estus"]]:
                 r = p.start_drink()
                 if r:
-                    self.message(t(r), RED)
+                    self.message(t(r), RED, 1.4, "small")
             elif keys[self.cfg["bindings"]["interact"]] and self.room == "hub" and self.bonfire.in_range(p.rect.center):
                 if b.aggro and not b.dead:
                     self.message(t("cannot_rest"), RED, 1.4)
@@ -787,10 +786,16 @@ class Game:
             if not self.player.dead:
                 self.player.draw(world)
             self.particles.draw(world)
-            if self.state == "play" and self.can_rest():
-                hint = i18n.t("rest_hint", key=config.key_name(self.cfg["bindings"]["interact"]))
-                img = self.fonts["small"].render(hint, True, (200, 200, 210))
-                world.blit(img, img.get_rect(center=(self.bonfire.pos[0], self.bonfire.pos[1] - 80)))
+            if self.state == "play":
+                p = self.player
+                if self.room == "hub":
+                    if self.can_rest():
+                        self.draw_interact_hint(world, self.bonfire.pos[0], self.bonfire.pos[1] - 95)
+                    if p.rect.right > 1150 and 200 < p.rect.centery < 520:
+                        self.draw_interact_hint(world, 1195, 370)
+                else:
+                    if p.rect.left < 130 and 200 < p.rect.centery < 520:
+                        self.draw_interact_hint(world, 85, 370)
         if self.shake > 0.02:
             ox = random.randint(-int(self.shake * 14), int(self.shake * 14))
             oy = random.randint(-int(self.shake * 14), int(self.shake * 14))
@@ -833,6 +838,15 @@ class Game:
         if self.room != "hub" or p.dead or (b.aggro and not b.dead):
             return False
         return self.bonfire.in_range(p.rect.center)
+
+    def draw_interact_hint(self, surf, x, y):
+        key = config.key_name(self.cfg["bindings"]["interact"])
+        img = self.fonts["small"].render(key, True, (235, 235, 240))
+        rect = pygame.Rect(0, 0, max(30, img.get_width() + 16), img.get_height() + 10)
+        rect.center = (x, y)
+        pygame.draw.rect(surf, (14, 14, 18), rect, border_radius=4)
+        pygame.draw.rect(surf, (200, 200, 210), rect, 2, border_radius=4)
+        surf.blit(img, img.get_rect(center=rect.center))
 
     def draw_fog_gate(self, surf, x):
         band = pygame.Surface((36, 340), pygame.SRCALPHA)
@@ -1017,9 +1031,9 @@ class Game:
 
     def draw_messages(self, surf):
         y = 310
-        for text, color, dur, tm in self.messages:
+        for text, color, dur, tm, size in self.messages:
             alpha = 255 if tm > 0.3 else int(255 * tm / 0.3)
-            img = self.fonts["big"].render(text, True, color)
+            img = self.fonts[size].render(text, True, color)
             img.set_alpha(alpha)
             surf.blit(img, img.get_rect(center=(WIDTH // 2, y)))
             y += 36
