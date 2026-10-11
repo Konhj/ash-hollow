@@ -191,6 +191,7 @@ class Game:
         self.fonts = {}
         self.load_fonts()
         self.canvas = pygame.Surface((WIDTH, HEIGHT))
+        self.disable_ime()
         self.floor = self.make_floor()
         self.particles = Particles()
         self.messages = []
@@ -255,8 +256,24 @@ class Game:
         self.shake = max(self.shake, 0.7)
         self.particles.spawn(p.rect.centerx, p.rect.centery, (200, 40, 40), 12, 3.5, 0.4)
 
+    def disable_ime(self):
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+
+            hwnd = pygame.display.get_wm_info()["window"]
+            ctypes.windll.imm32.ImmAssociateContext(hwnd, None)
+        except Exception:
+            pass
+        try:
+            pygame.key.stop_text_input()
+        except Exception:
+            pass
+
     def apply_resolution(self):
         self.screen = pygame.display.set_mode(RESOLUTIONS[self.cfg["resolution"]], pygame.RESIZABLE)
+        self.disable_ime()
 
     def adjust_resolution(self, delta):
         n = len(RESOLUTIONS)
