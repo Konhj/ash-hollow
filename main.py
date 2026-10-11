@@ -20,6 +20,8 @@ if sys.platform == "win32":
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         pass
+elif sys.platform.startswith("linux"):
+    os.environ["XMODIFIERS"] = "@im=none"
 
 KEY_ACTIONS = [
     ("move_up", "up"),
@@ -257,15 +259,17 @@ class Game:
         self.particles.spawn(p.rect.centerx, p.rect.centery, (200, 40, 40), 12, 3.5, 0.4)
 
     def disable_ime(self):
-        if sys.platform != "win32":
-            return
-        try:
-            import ctypes
+        if sys.platform == "win32":
+            try:
+                import ctypes
 
-            hwnd = pygame.display.get_wm_info()["window"]
-            ctypes.windll.imm32.ImmAssociateContext(hwnd, None)
-        except Exception:
-            pass
+                hwnd = pygame.display.get_wm_info()["window"]
+                ctypes.windll.imm32.ImmAssociateContext(hwnd, None)
+            except Exception:
+                pass
+        self.stop_ime()
+
+    def stop_ime(self):
         try:
             pygame.key.stop_text_input()
         except Exception:
@@ -481,6 +485,7 @@ class Game:
     def update(self, dt, keys=None):
         if keys is None:
             keys = pygame.key.get_pressed()
+        self.stop_ime()
         self.time += dt
         self.fade = max(0.0, self.fade - dt * 1.5)
         self.shake = max(0.0, self.shake - dt * 2.2)
