@@ -822,6 +822,14 @@ class Game:
                     if p.center_dist(b) <= SLAM_RADIUS:
                         if p.take_damage(SLAM_DAMAGE, b.dir):
                             self.on_player_hit()
+            elif b.attack_kind == "blast":
+                if not b.blast_landed:
+                    b.blast_landed = True
+                    self.shake = 1.6
+                    self.particles.spawn(b.rect.centerx, b.rect.centery, (255, 70, 60), 40, 6.0, 0.6)
+                    if p.center_dist(b) <= BLAST_RADIUS:
+                        if p.take_damage(BLAST_DAMAGE, b.dir):
+                            self.on_player_hit()
 
         if self.room == "arena" and b.dead and b.state_timer <= 0:
             config.delete_save()

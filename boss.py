@@ -5,20 +5,23 @@ import pygame
 
 from settings import *
 
-WINDUP = {"slash": 0.55, "charge": 0.75, "slam": 0.95}
-DURATION = {"slash": 0.18, "charge": 0.5, "slam": 0.12}
-RECOVER = {"slash": 0.55, "charge": 0.6, "slam": 1.0}
+WINDUP = {"slash": 0.55, "charge": 0.75, "slam": 0.95, "blast": 1.0}
+DURATION = {"slash": 0.18, "charge": 0.5, "slam": 0.12, "blast": 0.25}
+RECOVER = {"slash": 0.55, "charge": 0.6, "slam": 1.0, "blast": 0.9}
 
 
 class Boss:
     def __init__(self, x, y):
         self.spawn = (float(x), float(y))
         self.rect = pygame.Rect(0, 0, 64, 110)
+        self.has_phase2 = True
         self.reset()
 
     def reset(self):
         self.hp = BOSS_MAX_HP
         self.max_hp = BOSS_MAX_HP
+        self.phase = 1
+        self.phase2_blast_pending = False
         self.state = "idle"
         self.state_timer = 0.0
         self.attack_kind = None
@@ -29,6 +32,7 @@ class Boss:
         self.charge_dir = pygame.Vector2(-1, 0)
         self.hit_landed = False
         self.slam_landed = True
+        self.blast_landed = True
         self.flash = 0.0
         self.anim_t = 0.0
         self.dead = False
@@ -57,6 +61,14 @@ class Boss:
             self.dead = True
             self.state = "dying"
             self.state_timer = 1.6
+            return
+        if (
+            self.has_phase2
+            and self.phase == 1
+            and self.hp <= self.max_hp * PHASE2_HP_FRACTION
+        ):
+            self.phase = 2
+            self.phase2_blast_pending = True
 
     def current_hit_rect(self):
         if self.state != "attack" or self.attack_kind != "slash":
@@ -67,7 +79,9 @@ class Boss:
 
     def choose_attack(self, dist):
         r = random.random()
-        if dist > 280:
+        if self.phase == 2 and r < 0.25:
+            kind = "blast"
+        elif dist > 280:
             kind = "charge" if r < 0.75 else "slam"
         elif dist > 130:
             if r < 0.4:
@@ -81,6 +95,8 @@ class Boss:
         self.attack_kind = kind
         self.state = "windup"
         self.state_timer = WINDUP[kind]
+        if self.phase == 2 and kind != "blast":
+            self.state_timer *= PHASE2_WINDUP_MULT
         if kind == "charge":
             self.charge_dir = self.dir.copy()
 
@@ -105,6 +121,12 @@ class Boss:
         if dist > 0:
             self.dir = to.normalize()
 
+        if self.phase2_blast_pending and self.state in ("idle", "recover"):
+            self.phase2_blast_pending = False
+            self.state = "windup"
+            self.attack_kind = "blast"
+            self.state_timer = WINDUP["blast"]
+
         if self.state == "idle":
             if dist > 130:
                 self.x += self.dir.x * BOSS_SPEED
@@ -115,11 +137,19 @@ class Boss:
                 self.choose_attack(dist)
         elif self.state == "windup":
             self.state_timer -= dt
+            if self.attack_kind == "slam" and self.phase == 2:
+                if dist > 0:
+                    self.dir = pygame.Vector2(player.rect.center) - pygame.Vector2(self.rect.center)
+                    self.dir = self.dir.normalize()
+                self.x += self.dir.x * SLAM_TRACK_SPEED
+                self.y += self.dir.y * SLAM_TRACK_SPEED
+                self.clamp()
             if self.state_timer <= 0:
                 self.state = "attack"
                 self.state_timer = DURATION[self.attack_kind]
                 self.hit_landed = False
                 self.slam_landed = False
+                self.blast_landed = False
         elif self.state == "attack":
             self.state_timer -= dt
             if self.attack_kind == "charge":
@@ -171,6 +201,14 @@ class Boss:
             pygame.draw.circle(ring, (240, 150, 60, int(150 * (1 - p))), (200, 200), r, 6)
             surf.blit(ring, (self.rect.centerx - 200, self.rect.bottom - 200))
 
+        if self.state == "attack" and self.attack_kind == "blast":
+            p = 1.0 - max(0.0, self.state_timer) / DURATION["blast"]
+            ring = pygame.Surface((420, 420), pygame.SRCALPHA)
+            r = int(30 + BLAST_RADIUS * p)
+            pygame.draw.circle(ring, (255, 70, 60, int(200 * (1 - p))), (210, 210), r, 10)
+            pygame.draw.circle(ring, (255, 140, 120, int(120 * (1 - p))), (210, 210), max(8, r - 24), 4)
+            surf.blit(ring, (self.rect.centerx - 210, self.rect.centery - 210))
+
         tmp = pygame.Surface((160, 170), pygame.SRCALPHA)
         bx, by = 80, 100
 
@@ -179,6 +217,9 @@ class Boss:
             pygame.draw.circle(tmp, (180, 130, 60), (80, 52), 14)
         else:
             body = (220, 210, 210) if self.flash > 0 else (108, 24, 24)
+            if self.state == "windup" and self.attack_kind == "blast":
+                flick = 0.5 + 0.5 * math.sin(self.anim_t * 30)
+                body = (255, int(30 + 120 * flick), int(30 + 120 * flick))
             pygame.draw.rect(tmp, body, (46, 36, 68, 74), border_radius=8)
             pygame.draw.rect(tmp, (70, 14, 14), (54, 46, 52, 40), border_radius=6)
             pygame.draw.circle(tmp, (46, 46, 56), (80, 28), 15)
