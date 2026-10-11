@@ -123,8 +123,11 @@ class Boss:
         elif self.state == "attack":
             self.state_timer -= dt
             if self.attack_kind == "charge":
-                self.x += self.charge_dir.x * CHARGE_SPEED
-                self.y += self.charge_dir.y * CHARGE_SPEED
+                elapsed = DURATION["charge"] - self.state_timer
+                p = min(1.0, max(0.0, elapsed / DURATION["charge"]))
+                spd = CHARGE_SPEED * 6.0 * p * (1.0 - p)
+                self.x += self.charge_dir.x * spd
+                self.y += self.charge_dir.y * spd
                 self.clamp()
             if self.state_timer <= 0:
                 self.state = "recover"
@@ -189,9 +192,37 @@ class Boss:
                 sc = (255, int(60 + 100 * flick), int(60 + 100 * flick))
             elif self.state == "attack" and self.attack_kind == "slash":
                 sc = (240, 230, 240)
-            tip = (bx + dx * 70, by + dy * 70)
-            pygame.draw.line(tmp, sc, (bx + dx * 16, by + dy * 16), tip, 9)
+            if self.state == "windup" and self.attack_kind == "slash":
+                pygame.draw.line(tmp, sc, (bx, by + 16), (bx, by - 88), 9)
+            else:
+                tip = (bx + dx * 70, by + dy * 70)
+                pygame.draw.line(tmp, sc, (bx + dx * 16, by + dy * 16), tip, 9)
 
         if alpha < 255:
             tmp.set_alpha(alpha)
         surf.blit(tmp, (self.rect.x - 48, self.rect.y - 6 + dy_off))
+        if self.state == "attack" and self.attack_kind == "slash":
+            self.draw_slash_effect(surf)
+
+    def draw_slash_effect(self, surf):
+        dx, dy = self.dir
+        ang = math.atan2(dy, dx)
+        frac = (DURATION["slash"] - max(0.0, self.state_timer)) / DURATION["slash"]
+        seg = pygame.Surface((260, 260), pygame.SRCALPHA)
+        r = 120
+        for i, off in enumerate((0.0, -0.15, -0.3)):
+            p = max(0.0, min(1.0, frac + off))
+            a1 = math.radians(-60 + 120 * p - 12)
+            a2 = math.radians(-60 + 120 * p + 12)
+            alpha = int(220 - i * 85)
+            pygame.draw.arc(seg, (255, 95, 75, alpha), (130 - r, 130 - r, r * 2, r * 2), a1, a2, 7)
+            pygame.draw.arc(
+                seg,
+                (255, 150, 130, alpha // 2),
+                (130 - r + 14, 130 - r + 14, (r - 14) * 2, (r - 14) * 2),
+                a1,
+                a2,
+                4,
+            )
+        rotated = pygame.transform.rotate(seg, -math.degrees(ang))
+        surf.blit(rotated, rotated.get_rect(center=self.rect.center))
