@@ -55,8 +55,9 @@ class Menu:
         self.columns = 1
         self.hint = None
         self.hit_rects = []
+        self.font_key = "big"
 
-    def set(self, title, items, start_y=300, step=56, columns=1, hint=None):
+    def set(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big"):
         self.title = title
         self.items = items
         self.selected = 0
@@ -64,15 +65,36 @@ class Menu:
         self.step = step
         self.columns = columns
         self.hint = hint
+        self.font_key = font_key
         self.hit_rects = []
 
-    def push(self, title, items, start_y=300, step=56, columns=1, hint=None):
-        self.stack.append((self.title, self.items, self.selected, self.start_y, self.step, self.columns, self.hint))
-        self.set(title, items, start_y, step, columns, hint)
+    def push(self, title, items, start_y=300, step=56, columns=1, hint=None, font_key="big"):
+        self.stack.append(
+            (
+                self.title,
+                self.items,
+                self.selected,
+                self.start_y,
+                self.step,
+                self.columns,
+                self.hint,
+                self.font_key,
+            )
+        )
+        self.set(title, items, start_y, step, columns, hint, font_key)
 
     def pop(self):
         if self.stack:
-            self.title, self.items, self.selected, self.start_y, self.step, self.columns, self.hint = self.stack.pop()
+            (
+                self.title,
+                self.items,
+                self.selected,
+                self.start_y,
+                self.step,
+                self.columns,
+                self.hint,
+                self.font_key,
+            ) = self.stack.pop()
             return True
         return False
 
@@ -167,10 +189,10 @@ class Menu:
             label = item["label"]() if callable(item["label"]) else item["label"]
             if sel:
                 label = "> " + label + " <"
-            img = fonts["big"].render(label, True, color)
+            img = fonts[self.font_key].render(label, True, color)
             rect = img.get_rect(center=(x, y))
             surf.blit(img, rect)
-            self.hit_rects.append(rect.inflate(40, 14))
+            self.hit_rects.append(rect.inflate(40, 18))
         if self.capture:
             img = fonts["small"].render(i18n.t("press_any_key"), True, YELLOW)
             surf.blit(img, img.get_rect(bottomright=(WIDTH - 24, HEIGHT - 18)))
@@ -409,7 +431,7 @@ class Game:
                 return (t("key_conflict"), (255, 90, 90))
             return None
 
-        self.menu.push(t("key_bindings"), items, start_y=250, step=44, columns=2, hint=conflict_hint)
+        self.menu.push(t("key_bindings"), items, start_y=250, step=60, columns=2, hint=conflict_hint, font_key="normal")
 
     def start_new_game(self):
         self.new_game()
