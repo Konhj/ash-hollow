@@ -13,7 +13,7 @@ DEFAULT_BINDINGS = {
     "move_right": pygame.K_d,
     "attack": pygame.K_j,
     "roll": pygame.K_k,
-    "parry": pygame.K_l,
+    "offhand": pygame.K_l,
     "estus": pygame.K_f,
     "interact": pygame.K_e,
     "sprint": pygame.K_LSHIFT,
@@ -65,6 +65,8 @@ def load_config():
             for k, v in data["bindings"].items():
                 if k in cfg["bindings"] and isinstance(v, int):
                     cfg["bindings"][k] = v
+            if "parry" in data["bindings"] and "offhand" not in data["bindings"]:
+                cfg["bindings"]["offhand"] = data["bindings"]["parry"]
         if not (0 <= cfg["resolution"] < len(RESOLUTIONS)):
             cfg["resolution"] = DEFAULTS["resolution"]
         if not (0 <= cfg["display_mode"] <= 2):

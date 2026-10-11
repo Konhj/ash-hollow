@@ -46,6 +46,17 @@ ITEMS = {
             "zh": "快速的副手利刃。",
         },
     },
+    "small_round_shield": {
+        "name": {"en": "SMALL ROUND SHIELD", "zh": "小圆盾"},
+        "type": "weapon",
+        "slot": "offhand",
+        "subtype": "shield",
+        "stats": {"defense": 0.5, "parry_time": 0.22},
+        "desc": {
+            "en": "A small shield. Block to reduce damage; parry at the start of a block.",
+            "zh": "轻巧的小圆盾。招架减伤,举盾瞬间可弹反。",
+        },
+    },
     "knight_armor": {
         "name": {"en": "KNIGHT ARMOR", "zh": "骑士铠甲"},
         "type": "armor",
@@ -101,7 +112,7 @@ ITEMS = {
     },
 }
 
-DEFAULT_INVENTORY = ["broadsword", "dagger", "leather_armor", "golden_tree_shard", "fire_talisman"]
+DEFAULT_INVENTORY = ["broadsword", "dagger", "small_round_shield", "leather_armor", "golden_tree_shard", "fire_talisman"]
 
 ITEM_ALIASES = {"life_talisman": "golden_tree_shard"}
 DEFAULT_EQUIPMENT = {

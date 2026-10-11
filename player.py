@@ -15,6 +15,13 @@ class Player:
         self.equipment = dict(items_data.DEFAULT_EQUIPMENT)
         self.reset_stats()
 
+    def shield(self):
+        oid = self.equipment.get("offhand")
+        item = items_data.get(oid) if oid else None
+        if item and item["type"] == "weapon" and item.get("subtype") == "shield":
+            return item
+        return None
+
     def talisman_effects(self):
         out = {}
         for i in (1, 2, 3):
@@ -52,6 +59,14 @@ class Player:
         if item and item["type"] == "weapon":
             return item["stats"].get("speed", 1.0)
         return 1.0
+
+    def current_attack_damage(self):
+        if self.state == "attack" and getattr(self, "attack_is_offhand", False):
+            oid = self.equipment.get("offhand")
+            item = items_data.get(oid) if oid else None
+            if item and item["type"] == "weapon":
+                return item["stats"].get("damage", ATTACK_DAMAGE)
+        return self.attack_damage()
 
     def refresh_max_hp(self):
         new_max = self.max_hp()
@@ -113,7 +128,21 @@ class Player:
             move.normalize_ip()
         self.last_move = move
 
-        if self.state == "idle":
+        if self.state == "guard":
+            held = keys[self.bindings["offhand"]] and self.shield() is not None
+            if not held:
+                self.state = "idle"
+            else:
+                self.guard_timer += dt
+                if move.length_squared() > 0:
+                    self.facing = move.copy()
+                    self.x += move.x * PLAYER_SPEED * GUARD_SPEED_MULT
+                    self.y += move.y * PLAYER_SPEED * GUARD_SPEED_MULT
+                    self.clamp()
+                self.stamina = max(0.0, self.stamina - GUARD_DRAIN * dt)
+                if self.stamina <= 0:
+                    self.state = "idle"
+        elif self.state == "idle":
             sprint_held = (
                 keys[self.bindings["sprint"]]
                 and move.length_squared() > 0
@@ -137,7 +166,7 @@ class Player:
             if self.state_timer <= 0:
                 self.state = "idle"
                 self.roll_cooldown = ROLL_COOLDOWN
-        elif self.state in ("attack", "parry", "riposte", "drink"):
+        elif self.state in ("attack", "riposte", "drink"):
             self.state_timer -= dt
             if self.state_timer <= 0:
                 if self.state == "drink":
@@ -151,6 +180,7 @@ class Player:
             return "out_of_stamina"
         self.stamina -= ATTACK_COST
         self.state = "attack"
+        self.attack_is_offhand = False
         self.attack_duration = ATTACK_TIME / self.attack_speed()
         self.state_timer = self.attack_duration
         self.attack_landed = False
@@ -166,12 +196,25 @@ class Player:
         self.invuln = ROLL_TIME
         self.roll_dir = self.last_move.copy() if self.last_move.length_squared() > 0 else self.facing.copy()
 
-    def start_parry(self):
-        if self.stamina < PARRY_COST:
+    def start_guard(self):
+        if self.stamina <= 0:
+            return
+        self.state = "guard"
+        self.guard_timer = 0.0
+
+    def start_offhand_attack(self):
+        oid = self.equipment.get("offhand")
+        item = items_data.get(oid) if oid else None
+        if not item or item["type"] != "weapon" or item.get("subtype") == "shield":
+            return None
+        if self.stamina < ATTACK_COST:
             return "out_of_stamina"
-        self.stamina -= PARRY_COST
-        self.state = "parry"
-        self.state_timer = PARRY_TIME
+        self.stamina -= ATTACK_COST
+        self.state = "attack"
+        self.attack_is_offhand = True
+        self.attack_duration = ATTACK_TIME / item["stats"].get("speed", 1.0)
+        self.state_timer = self.attack_duration
+        self.attack_landed = False
 
     def start_drink(self):
         if self.estus <= 0:
@@ -188,7 +231,12 @@ class Player:
         self.riposte_done = False
 
     def parry_window_active(self):
-        return self.state == "parry" and self.state_timer >= PARRY_TIME - PARRY_WINDOW
+        if self.state != "guard":
+            return False
+        sh = self.shield()
+        if not sh:
+            return False
+        return self.guard_timer <= sh["stats"].get("parry_time", 0.2)
 
     def attack_active(self):
         if self.state != "attack":
@@ -208,6 +256,10 @@ class Player:
         if self.invuln > 0 or self.state == "roll":
             return False
         final = max(1, int(dmg - self.defense()))
+        if self.state == "guard":
+            sh = self.shield()
+            if sh:
+                final = max(1, int(final * (1 - sh["stats"].get("defense", 0.0))))
         self.hp -= final
         self.flash = 0.18
         if from_dir is not None:
@@ -241,8 +293,9 @@ class Player:
                 pygame.draw.line(tmp, (255, 240, 160), (35 + fx * 8, 30 + fy * 8), tip, 5)
             else:
                 pygame.draw.line(tmp, (200, 200, 214), (35 + fx * 8, 30 + fy * 8), tip, 4)
-            if self.state == "parry":
-                pygame.draw.circle(tmp, (222, 222, 235, 200), (35 + fx * 16, 32 + fy * 16), 11, 3)
+            if self.state == "guard":
+                pygame.draw.circle(tmp, (200, 200, 215, 220), (35 + fx * 16, 32 + fy * 16), 13, 4)
+                pygame.draw.circle(tmp, (140, 140, 155, 180), (35 + fx * 16, 32 + fy * 16), 13)
             if self.state == "drink":
                 pygame.draw.circle(tmp, (240, 150, 40, 230), (35 + fx * 10, 14), 5)
 

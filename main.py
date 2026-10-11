@@ -32,7 +32,7 @@ KEY_ACTIONS = [
     ("move_right", "right"),
     ("attack", "attack"),
     ("roll", "roll"),
-    ("parry", "parry"),
+    ("offhand", "slot_offhand"),
     ("estus", "estus"),
     ("interact", "rest"),
     ("sprint", "sprint"),
@@ -736,10 +736,13 @@ class Game:
                 r = p.start_roll()
                 if r:
                     self.message(t(r), RED, 1.4, "small")
-            elif keys[self.cfg["bindings"]["parry"]]:
-                r = p.start_parry()
-                if r:
-                    self.message(t(r), RED, 1.4, "small")
+            elif keys[self.cfg["bindings"]["offhand"]]:
+                if p.shield() is not None:
+                    p.start_guard()
+                else:
+                    r = p.start_offhand_attack()
+                    if r:
+                        self.message(t(r), RED, 1.4, "small")
             elif keys[self.cfg["bindings"]["estus"]]:
                 r = p.start_drink()
                 if r:
@@ -772,7 +775,7 @@ class Game:
             hb = p.get_attack_hitbox()
             if hb.colliderect(b.rect):
                 p.attack_landed = True
-                b.take_damage(p.attack_damage())
+                b.take_damage(p.current_attack_damage())
                 self.particles.spawn(hb.centerx, hb.centery, (255, 220, 120), 6, 3.0, 0.3)
 
         if self.room == "arena" and p.state == "riposte" and not p.riposte_done:
@@ -975,8 +978,13 @@ class Game:
         }[item["type"]]
         lines = [items_data.name(item_id, lang), type_label]
         if item["type"] == "weapon":
-            lines.append(f"{t('damage')}: {item['stats']['damage']}")
-            lines.append(f"{t('speed')}: {item['stats']['speed']}")
+            if item.get("subtype") == "shield":
+                st = item["stats"]
+                lines.append(f"{t('block')}: {int(st['defense'] * 100)}%")
+                lines.append(f"{t('parry_time')}: {st['parry_time']}s")
+            else:
+                lines.append(f"{t('damage')}: {item['stats']['damage']}")
+                lines.append(f"{t('speed')}: {item['stats']['speed']}")
             slot_key = "slot_mainhand" if item["slot"] == "mainhand" else "slot_offhand"
             lines.append(t(slot_key))
         elif item["type"] == "armor":
