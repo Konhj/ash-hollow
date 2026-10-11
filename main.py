@@ -267,7 +267,7 @@ class Game:
         self.fonts_cjk = self.fonts_zh
         self.fonts = self.fonts_en if self.cfg["language"] == "en" else self.fonts_zh
         self.title_font = None
-        for name in ("agmena.ttf", "agmena.otf", "cinzel.ttf"):
+        for name in ("agmena.ttf", "agmena.otf", "unifrakturmaguntia.ttf"):
             path = config.resource_path(os.path.join("fonts", name))
             if os.path.exists(path):
                 try:
