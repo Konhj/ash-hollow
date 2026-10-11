@@ -1,3 +1,5 @@
+import math
+
 import pygame
 
 from settings import *
@@ -67,6 +69,41 @@ class Player:
             if item and item["type"] == "weapon":
                 return item["stats"].get("damage", ATTACK_DAMAGE)
         return self.attack_damage()
+
+    def current_attack_style(self):
+        item = None
+        if self.state == "attack" and getattr(self, "attack_is_offhand", False):
+            oid = self.equipment.get("offhand")
+            item = items_data.get(oid) if oid else None
+        else:
+            wid = self.equipment.get("mainhand")
+            item = items_data.get(wid) if wid else None
+        if item and item["type"] == "weapon":
+            return item.get("attack_style", "slash")
+        return "slash"
+
+    def draw_slash_effect(self, surf):
+        fx, fy = self.facing
+        ang = math.atan2(fy, fx)
+        frac = (self.attack_duration - self.state_timer) / max(0.001, self.attack_duration)
+        seg = pygame.Surface((150, 150), pygame.SRCALPHA)
+        r = 62
+        for i, off in enumerate((0.0, -0.12, -0.24)):
+            p = max(0.0, min(1.0, frac + off))
+            a1 = math.radians(-165 + 220 * p)
+            a2 = math.radians(-55 + 220 * p)
+            alpha = int(230 - i * 90)
+            pygame.draw.arc(seg, (255, 255, 255, alpha), (75 - r, 75 - r, r * 2, r * 2), a1, a2, 5)
+            pygame.draw.arc(
+                seg,
+                (255, 255, 255, alpha // 2),
+                (75 - r + 12, 75 - r + 12, (r - 12) * 2, (r - 12) * 2),
+                a1,
+                a2,
+                3,
+            )
+        rotated = pygame.transform.rotate(seg, -math.degrees(ang))
+        surf.blit(rotated, rotated.get_rect(center=self.rect.center))
 
     def refresh_max_hp(self):
         new_max = self.max_hp()
@@ -302,3 +339,5 @@ class Player:
         if self.invuln > 0 and self.state != "roll":
             tmp.set_alpha(150)
         surf.blit(tmp, (self.rect.x - 20, self.rect.y - 14))
+        if self.state == "attack" and self.current_attack_style() == "slash":
+            self.draw_slash_effect(surf)

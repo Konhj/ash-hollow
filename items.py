@@ -10,6 +10,7 @@ ITEMS = {
         "name": {"en": "BROADSWORD", "zh": "阔剑"},
         "type": "weapon",
         "slot": "mainhand",
+        "attack_style": "slash",
         "stats": {"damage": 35, "speed": 1.0},
         "desc": {
             "en": "A reliable standard sword, well balanced.",
@@ -20,6 +21,7 @@ ITEMS = {
         "name": {"en": "LONGSWORD", "zh": "长剑"},
         "type": "weapon",
         "slot": "mainhand",
+        "attack_style": "slash",
         "stats": {"damage": 42, "speed": 0.9},
         "desc": {
             "en": "Longer blade, heavier swing.",
@@ -30,6 +32,7 @@ ITEMS = {
         "name": {"en": "GREATSWORD", "zh": "巨剑"},
         "type": "weapon",
         "slot": "mainhand",
+        "attack_style": "slash",
         "stats": {"damage": 60, "speed": 0.65},
         "desc": {
             "en": "Slow but devastating.",
@@ -40,6 +43,7 @@ ITEMS = {
         "name": {"en": "DAGGER", "zh": "短剑"},
         "type": "weapon",
         "slot": "offhand",
+        "attack_style": "slash",
         "stats": {"damage": 18, "speed": 1.5},
         "desc": {
             "en": "A quick off-hand blade.",
