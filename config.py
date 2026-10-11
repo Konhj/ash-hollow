@@ -24,6 +24,7 @@ DEFAULTS = {
     "resolution": 2,
     "display_mode": 0,
     "language": "en",
+    "show_keys": True,
     "bindings": dict(DEFAULT_BINDINGS),
 }
 
@@ -73,6 +74,8 @@ def load_config():
             cfg["display_mode"] = DEFAULTS["display_mode"]
         if cfg["language"] not in ("en", "zh"):
             cfg["language"] = DEFAULTS["language"]
+        if "show_keys" in data:
+            cfg["show_keys"] = bool(data["show_keys"])
     except Exception:
         pass
     return cfg

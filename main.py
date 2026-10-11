@@ -397,6 +397,10 @@ class Game:
         self.fonts = self.fonts_en if self.cfg["language"] == "en" else self.fonts_zh
         config.save_config(self.cfg)
 
+    def adjust_show_keys(self, delta):
+        self.cfg["show_keys"] = not self.cfg["show_keys"]
+        config.save_config(self.cfg)
+
     def set_binding(self, action, key):
         if key == pygame.K_ESCAPE:
             return
@@ -476,11 +480,15 @@ class Game:
             cur = "lang_zh" if self.cfg["language"] == "zh" else "lang_en"
             return f"{t('language')}: {t(cur)}"
 
+        def keys_label():
+            return f"{t('show_keys')}: {t('on') if self.cfg['show_keys'] else t('off')}"
+
         items = [
             {"label": display_label, "adjust": self.adjust_display_mode},
             {"label": res_label, "adjust": self.adjust_resolution},
             {"label": lang_label, "adjust": self.adjust_language},
             {"label": lambda: t("key_bindings"), "action": self.build_key_menu},
+            {"label": keys_label, "adjust": self.adjust_show_keys},
             {"label": lambda: t("back"), "action": lambda: self.menu.pop()},
         ]
         self.menu.push(lambda: t("settings"), items, hint=lambda: (t("adjust_hint"), GRAY))
@@ -860,6 +868,8 @@ class Game:
             else:
                 self.draw_banner(canvas)
             self.draw_messages(canvas)
+            if self.cfg["show_keys"]:
+                self.draw_key_hints(canvas)
         if self.state == "died":
             a = max(0.0, min(1.0, (2.4 - self.death_timer) / 0.6))
             img = self.fonts["huge"].render("YOU DIED", True, (190, 20, 20))
@@ -1158,6 +1168,32 @@ class Game:
                     box.blit(img, (pad, y))
                     y += 24
                 canvas.blit(box, (tx, ty))
+
+    def draw_key_hints(self, surf):
+        b = self.cfg["bindings"]
+        kn = config.key_name
+        t = i18n.t
+        lines = [
+            f"{kn(b['attack'])}  {t('attack')}",
+            f"{kn(b['roll'])}  {t('roll')}",
+            f"{kn(b['offhand'])}  {t('slot_offhand')}",
+            f"{kn(b['estus'])}  {t('estus')}",
+            f"{kn(b['interact'])}  {t('rest')}",
+            f"{kn(b['sprint'])}  {t('sprint')}",
+            f"{kn(b['inventory'])}  {t('inventory')}",
+        ]
+        font = self.fonts["small"]
+        imgs = [font.render(line, True, (195, 195, 205)) for line in lines]
+        w = max(img.get_width() for img in imgs) + 20
+        h = len(imgs) * 22 + 14
+        panel = pygame.Surface((w, h), pygame.SRCALPHA)
+        panel.fill((10, 10, 14, 150))
+        pygame.draw.rect(panel, (90, 90, 100), (0, 0, w, h), 1)
+        surf.blit(panel, (WIDTH - w - 12, 12))
+        y = 20
+        for img in imgs:
+            surf.blit(img, (WIDTH - w + 6, y))
+            y += 22
 
     def draw_interact_hint(self, surf, x, y):
         key = config.key_name(self.cfg["bindings"]["interact"])
