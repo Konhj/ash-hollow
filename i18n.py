@@ -1,7 +1,7 @@
 LANG = "en"
 
 STRINGS = {
-    "game_title": {"en": "ASH HOLLOW", "zh": "灰烬谷"},
+    "game_title": {"en": "ASH HOLLOW", "zh": "ASH HOLLOW"},
     "boss_name": {"en": "ABYSS WATCHER", "zh": "深渊监视者"},
     "boss_subtitle": {"en": "HEIR OF THE EMBERS", "zh": "余烬的继承者"},
     "unkindled": {"en": "UNKINDLED", "zh": "无火余烬"},
