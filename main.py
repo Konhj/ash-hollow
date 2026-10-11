@@ -573,7 +573,7 @@ class Game:
                         self.mouse_pos = self.to_canvas(event.pos)
                         self.mouse_clicked = True
                     elif event.button == 3:
-                        if self.state in ("main_menu", "pause"):
+                        if not self.menu.capture and self.state in ("main_menu", "pause"):
                             self.on_escape()
             self.update(dt)
             self.draw()
@@ -598,6 +598,7 @@ class Game:
             if (
                 self.state == "main_menu"
                 and not self.cl_mode
+                and not self.menu.capture
                 and self.mouse_clicked
                 and self.version_rect.collidepoint(self.mouse_pos)
             ):
