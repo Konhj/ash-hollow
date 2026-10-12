@@ -11,7 +11,7 @@ ITEMS = {
         "type": "weapon",
         "slot": "mainhand",
         "attack_style": "slash",
-        "stats": {"damage": 35, "speed": 1.0, "range": 60},
+        "stats": {"damage": 35, "speed": 1.0, "range": 60, "stamina": 22},
         "desc": {
             "en": "A reliable standard sword, well balanced.",
             "zh": "标准可靠的直剑,各方面均衡。",
@@ -22,7 +22,7 @@ ITEMS = {
         "type": "weapon",
         "slot": "mainhand",
         "attack_style": "slash",
-        "stats": {"damage": 42, "speed": 0.9, "range": 66},
+        "stats": {"damage": 42, "speed": 0.9, "range": 66, "stamina": 24},
         "desc": {
             "en": "Longer blade, heavier swing.",
             "zh": "更长的剑刃,挥动略慢。",
@@ -33,7 +33,7 @@ ITEMS = {
         "type": "weapon",
         "slot": "mainhand",
         "attack_style": "slash",
-        "stats": {"damage": 60, "speed": 0.65, "range": 74},
+        "stats": {"damage": 60, "speed": 0.65, "range": 74, "stamina": 32},
         "desc": {
             "en": "Slow but devastating.",
             "zh": "缓慢但破坏力惊人。",
@@ -44,7 +44,7 @@ ITEMS = {
         "type": "weapon",
         "slot": "offhand",
         "attack_style": "slash",
-        "stats": {"damage": 18, "speed": 1.5, "range": 48},
+        "stats": {"damage": 18, "speed": 1.5, "range": 48, "stamina": 14},
         "desc": {
             "en": "A quick off-hand blade.",
             "zh": "快速的副手利刃。",

@@ -224,10 +224,23 @@ class Player:
                     self.just_drank = True
                 self.state = "idle"
 
+    def attack_stamina_cost(self):
+        item = None
+        if self.state == "attack" and getattr(self, "attack_is_offhand", False):
+            oid = self.equipment.get("offhand")
+            item = items_data.get(oid) if oid else None
+        else:
+            wid = self.equipment.get("mainhand")
+            item = items_data.get(wid) if wid else None
+        if item and item["type"] == "weapon":
+            return item["stats"].get("stamina", ATTACK_COST)
+        return ATTACK_COST
+
     def start_attack(self):
-        if self.stamina < ATTACK_COST:
+        cost = self.attack_stamina_cost()
+        if self.stamina < cost:
             return "out_of_stamina"
-        self.stamina -= ATTACK_COST
+        self.stamina -= cost
         self.state = "attack"
         self.attack_is_offhand = False
         self.attack_duration = ATTACK_TIME / self.attack_speed()
@@ -256,9 +269,10 @@ class Player:
         item = items_data.get(oid) if oid else None
         if not item or item["type"] != "weapon" or item.get("subtype") == "shield":
             return None
-        if self.stamina < ATTACK_COST:
+        cost = item["stats"].get("stamina", ATTACK_COST)
+        if self.stamina < cost:
             return "out_of_stamina"
-        self.stamina -= ATTACK_COST
+        self.stamina -= cost
         self.state = "attack"
         self.attack_is_offhand = True
         self.attack_duration = ATTACK_TIME / item["stats"].get("speed", 1.0)
