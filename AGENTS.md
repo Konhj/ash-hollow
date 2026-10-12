@@ -2,6 +2,28 @@
 
 Python + pygame project. Run with `.venv/bin/python main.py` or `./run.sh`.
 
+## Model routing (Windows 部署后生效)
+- 本地模型(建议 Qwen2.5-Coder-32B / Qwen3-Coder-30B,Q4 量化,LM Studio/Ollama/vLLM):
+  单文件编辑、小功能、机械性重构、测试编写与运行、格式与文案修改。
+- 云端模型(DeepSeek V4 Pro):
+  架构与系统设计、跨模块重构、疑难 bug、长会话设计讨论、发布与 CI 事务。
+- 无论哪个模型:动代码前先读 AGENTS.md 与 DESIGN.md(规格书),改完跑 tests/ 全绿。
+
+## OpenCode 双 provider 配置示例
+`~/.config/opencode/opencode.json` 增加本地 provider(OpenAI 兼容 API):
+```json
+{
+  "provider": {
+    "local": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": { "baseURL": "http://localhost:11434/v1" },
+      "models": { "qwen-coder": { "name": "Qwen3-Coder-30B" } }
+    }
+  }
+}
+```
+用法:`opencode run --model local/qwen-coder "..."`(LM Studio 默认端口 1234,Ollama 默认 11434)。
+
 ## Working rules (from the user)
 - Do NOT auto-launch the game after making changes. The user starts it themselves.
 - Small changes: commit locally only, do NOT push.
