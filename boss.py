@@ -14,6 +14,7 @@ class Boss:
     def __init__(self, x, y):
         self.spawn = (float(x), float(y))
         self.rect = pygame.Rect(0, 0, 64, 110)
+        self.world_bounds = (WIDTH, HEIGHT)
         self.has_phase2 = True
         self.reset()
 
@@ -43,8 +44,9 @@ class Boss:
         self.rect.center = (round(self.x), round(self.y))
 
     def clamp(self):
-        self.x = max(48.0, min(WIDTH - 48.0, self.x))
-        self.y = max(71.0, min(HEIGHT - 71.0, self.y))
+        w, h = self.world_bounds
+        self.x = max(48.0, min(w - 48.0, self.x))
+        self.y = max(71.0, min(h - 71.0, self.y))
         self.sync_rect()
 
     def stagger(self, t):
@@ -173,7 +175,7 @@ class Boss:
                 self.state = "recover"
                 self.state_timer = 0.8
 
-    def draw(self, surf):
+    def draw(self, surf, ox=0, oy=0):
         alpha = 255
         if self.state == "dying":
             alpha = int(255 * max(0.0, min(1.0, self.state_timer / 1.6)))
@@ -192,14 +194,14 @@ class Boss:
         if dy_off < -20:
             sh = pygame.Surface((90, 20), pygame.SRCALPHA)
             pygame.draw.ellipse(sh, (0, 0, 0, 120), sh.get_rect())
-            surf.blit(sh, (self.rect.centerx - 45, self.rect.bottom - 8))
+            surf.blit(sh, (self.rect.centerx - 45 - ox, self.rect.bottom - 8 - oy))
 
         if self.state == "attack" and self.attack_kind == "slam":
             p = 1.0 - max(0.0, self.state_timer) / DURATION["slam"]
             ring = pygame.Surface((400, 400), pygame.SRCALPHA)
             r = int(20 + 160 * p)
             pygame.draw.circle(ring, (240, 150, 60, int(150 * (1 - p))), (200, 200), r, 6)
-            surf.blit(ring, (self.rect.centerx - 200, self.rect.bottom - 200))
+            surf.blit(ring, (self.rect.centerx - 200 - ox, self.rect.bottom - 200 - oy))
 
         if self.state == "attack" and self.attack_kind == "blast":
             p = 1.0 - max(0.0, self.state_timer) / DURATION["blast"]
@@ -207,7 +209,7 @@ class Boss:
             r = int(30 + BLAST_RADIUS * p)
             pygame.draw.circle(ring, (255, 70, 60, int(200 * (1 - p))), (210, 210), r, 10)
             pygame.draw.circle(ring, (255, 140, 120, int(120 * (1 - p))), (210, 210), max(8, r - 24), 4)
-            surf.blit(ring, (self.rect.centerx - 210, self.rect.centery - 210))
+            surf.blit(ring, (self.rect.centerx - 210 - ox, self.rect.centery - 210 - oy))
 
         tmp = pygame.Surface((160, 170), pygame.SRCALPHA)
         bx, by = 80, 100
@@ -241,11 +243,11 @@ class Boss:
 
         if alpha < 255:
             tmp.set_alpha(alpha)
-        surf.blit(tmp, (self.rect.x - 48, self.rect.y - 6 + dy_off))
+        surf.blit(tmp, (self.rect.x - 48 - ox, self.rect.y - 6 + dy_off - oy))
         if self.state == "attack" and self.attack_kind == "slash":
             self.draw_slash_effect(surf)
 
-    def draw_slash_effect(self, surf):
+    def draw_slash_effect(self, surf, ox=0, oy=0):
         dx, dy = self.dir
         ang = math.atan2(dy, dx)
         frac = (DURATION["slash"] - max(0.0, self.state_timer)) / DURATION["slash"]
@@ -266,4 +268,4 @@ class Boss:
                 4,
             )
         rotated = pygame.transform.rotate(seg, -math.degrees(ang))
-        surf.blit(rotated, rotated.get_rect(center=self.rect.center))
+        surf.blit(rotated, rotated.get_rect(center=(self.rect.centerx - ox, self.rect.centery - oy)))

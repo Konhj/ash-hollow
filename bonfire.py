@@ -19,8 +19,10 @@ class Bonfire:
         cx, cy = center
         return (cx - self.pos[0]) ** 2 + (cy - self.pos[1]) ** 2 <= self.radius ** 2
 
-    def draw(self, surf):
+    def draw(self, surf, ox=0, oy=0):
         x, y = self.pos
+        x -= ox
+        y -= oy
         glow = pygame.Surface((180, 180), pygame.SRCALPHA)
         flicker = 90 + 25 * math.sin(self.t * 9) + random.uniform(-10, 10)
         pygame.draw.circle(glow, (240, 140, 40, int(flicker * 0.35)), (90, 90), 66)

@@ -10,6 +10,7 @@ class Player:
     def __init__(self, x, y, bindings):
         self.bindings = bindings
         self.spawn = (float(x), float(y))
+        self.world_bounds = (WIDTH, HEIGHT)
         self.rect = pygame.Rect(0, 0, 30, 46)
         self.facing = pygame.Vector2(1, 0)
         self.last_move = pygame.Vector2(0, 0)
@@ -94,7 +95,7 @@ class Player:
             return item["stats"].get("range", ATTACK_RANGE)
         return ATTACK_RANGE
 
-    def draw_slash_effect(self, surf):
+    def draw_slash_effect(self, surf, ox=0, oy=0):
         fx, fy = self.facing
         ang = math.atan2(fy, fx)
         frac = (self.attack_duration - self.state_timer) / max(0.001, self.attack_duration)
@@ -115,7 +116,7 @@ class Player:
                 3,
             )
         rotated = pygame.transform.rotate(seg, -math.degrees(ang))
-        surf.blit(rotated, rotated.get_rect(center=self.rect.center))
+        surf.blit(rotated, rotated.get_rect(center=(self.rect.centerx - ox, self.rect.centery - oy)))
 
     def refresh_max_hp(self):
         new_max = self.max_hp()
@@ -149,8 +150,9 @@ class Player:
         self.rect.center = (round(self.x), round(self.y))
 
     def clamp(self):
-        self.x = max(31.0, min(WIDTH - 31.0, self.x))
-        self.y = max(39.0, min(HEIGHT - 39.0, self.y))
+        w, h = self.world_bounds
+        self.x = max(31.0, min(w - 31.0, self.x))
+        self.y = max(39.0, min(h - 39.0, self.y))
         self.sync_rect()
 
     def center_dist(self, other):
@@ -338,7 +340,7 @@ class Player:
             self.dead = True
         return True
 
-    def draw(self, surf):
+    def draw(self, surf, ox=0, oy=0):
         if self.dead:
             return
         fx, fy = self.facing
@@ -366,6 +368,6 @@ class Player:
 
         if self.invuln > 0 and self.state != "roll":
             tmp.set_alpha(150)
-        surf.blit(tmp, (self.rect.x - 20, self.rect.y - 14))
+        surf.blit(tmp, (self.rect.x - 20 - ox, self.rect.y - 14 - oy))
         if self.state == "attack" and self.current_attack_style() == "slash":
-            self.draw_slash_effect(surf)
+            self.draw_slash_effect(surf, ox, oy)

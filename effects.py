@@ -31,10 +31,10 @@ class Particles:
             p["life"] -= dt
         self.items = [p for p in self.items if p["life"] > 0]
 
-    def draw(self, surf):
+    def draw(self, surf, ox=0, oy=0):
         for p in self.items:
             a = int(255 * p["life"] / p["max_life"])
             color = (*p["color"][:3], a)
             s = pygame.Surface((p["size"] * 2, p["size"] * 2), pygame.SRCALPHA)
             pygame.draw.circle(s, color, (p["size"], p["size"]), p["size"])
-            surf.blit(s, (p["x"] - p["size"], p["y"] - p["size"]))
+            surf.blit(s, (p["x"] - p["size"] - ox, p["y"] - p["size"] - oy))

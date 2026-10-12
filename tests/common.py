@@ -38,10 +38,11 @@ def step(game, frames, keys=()):
 
 def arena(game):
     game.state = "play"
-    game.room = "arena"
     game.hitstop = 0.0
     game.input_buffer = {"action": None, "timer": 0.0}
+    game.conn_cooldown = 0.0
     game.player.respawn()
+    game.enter_room("arena", (150, 360))
     game.boss.reset()
     game.boss.aggro = True
     game.boss.aggro_banner = 0.0

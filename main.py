@@ -14,6 +14,7 @@ import config
 import i18n
 import changelog
 import items as items_data
+import rooms as rooms_data
 
 if sys.platform == "win32":
     try:
@@ -233,7 +234,7 @@ class Game:
         self.fonts = {}
         self.load_fonts()
         self.canvas = pygame.Surface((WIDTH, HEIGHT))
-        self.floor = self.make_floor()
+        self.room_floors = {}
         self.particles = Particles()
         self.messages = []
         self.time = 0.0
@@ -252,6 +253,9 @@ class Game:
         self.cl_lines = []
         self.cl_rects = []
         self.room = "hub"
+        self.room_def = rooms_data.room_by_id("hub")
+        self.cam = [0.0, 0.0]
+        self.room_banner_key = "firelink"
         self.hub_banner = 0.0
         self.inv_tab = 0
         self.inv_hover = None
@@ -261,6 +265,7 @@ class Game:
         self.inv_tab_rects = []
         self.hitstop = 0.0
         self.input_buffer = {"action": None, "timer": 0.0}
+        self.conn_cooldown = 0.0
         self.state = "main_menu"
         self.build_main_menu()
         self.new_game()
@@ -299,12 +304,12 @@ class Game:
         if self.title_font is None:
             self.title_font = self.fonts["big"]
 
-    def make_floor(self):
-        surf = pygame.Surface((WIDTH, HEIGHT))
+    def make_floor(self, w, h, solid_rects=()):
+        surf = pygame.Surface((w, h))
         surf.fill(FLOOR)
         random.seed(7)
-        for gy in range(0, HEIGHT, 80):
-            for gx in range(0, WIDTH, 80):
+        for gy in range(0, h, 80):
+            for gx in range(0, w, 80):
                 c = (
                     FLOOR[0] + random.randint(-5, 5),
                     FLOOR[1] + random.randint(-5, 5),
@@ -312,34 +317,106 @@ class Game:
                 )
                 pygame.draw.rect(surf, c, (gx + 2, gy + 2, 76, 76))
                 pygame.draw.rect(surf, FLOOR_DARK, (gx, gy, 80, 80), 1)
+        pygame.draw.rect(surf, WALL, (0, 0, w, h), 6)
+        for sr in solid_rects:
+            pygame.draw.rect(surf, (52, 52, 60), sr)
+            pygame.draw.rect(surf, (70, 70, 80), sr, 2)
         return surf
+
+    def get_room_floor(self, room_id):
+        if room_id not in self.room_floors:
+            room = rooms_data.room_by_id(room_id)
+            w, h = room["size"]
+            self.room_floors[room_id] = self.make_floor(w, h, room["solid_rects"])
+        return self.room_floors[room_id]
+
+    def enter_room(self, room_id, spawn):
+        room = rooms_data.room_by_id(room_id)
+        if not room:
+            return
+        self.room = room_id
+        self.room_def = room
+        w, h = room["size"]
+        self.player.world_bounds = (w, h)
+        self.boss.world_bounds = (w, h)
+        self.player.x, self.player.y = float(spawn[0]), float(spawn[1])
+        self.player.sync_rect()
+        self.conn_cooldown = 0.4
+        self.snap_camera()
+        banner = room.get("banner")
+        if banner:
+            self.room_banner_key = banner
+            self.hub_banner = 2.6
+        else:
+            self.hub_banner = 0.0
+
+    def snap_camera(self):
+        w, h = self.room_def["size"]
+        self.cam[0] = float(max(0, min(self.player.rect.centerx - WIDTH // 2, w - WIDTH)))
+        self.cam[1] = float(max(0, min(self.player.rect.centery - HEIGHT // 2, h - HEIGHT)))
+
+    def update_camera(self):
+        w, h = self.room_def["size"]
+        tx = max(0, min(self.player.rect.centerx - WIDTH // 2, w - WIDTH))
+        ty = max(0, min(self.player.rect.centery - HEIGHT // 2, h - HEIGHT))
+        self.cam[0] += (tx - self.cam[0]) * 0.25
+        self.cam[1] += (ty - self.cam[1]) * 0.25
+
+    def resolve_terrain(self, ent):
+        r = ent.rect
+        for sr in self.room_def["solid_rects"]:
+            srect = pygame.Rect(sr)
+            if r.colliderect(srect):
+                left = r.right - srect.left
+                right = srect.right - r.left
+                top = r.bottom - srect.top
+                bottom = srect.bottom - r.top
+                m = min(left, right, top, bottom)
+                if m == left:
+                    ent.x = srect.left - r.width / 2
+                elif m == right:
+                    ent.x = srect.right + r.width / 2
+                elif m == top:
+                    ent.y = srect.top - r.height / 2
+                else:
+                    ent.y = srect.bottom + r.height / 2
+                ent.sync_rect()
+                r = ent.rect
+
+    def resolve_entity_collision(self):
+        p, b = self.player, self.boss
+        if self.room != "arena" or b.dead:
+            return
+        if p.rect.colliderect(b.rect):
+            dx = p.rect.centerx - b.rect.centerx
+            dy = p.rect.centery - b.rect.centery
+            if dx == 0 and dy == 0:
+                dx = 1
+            ox = (p.rect.width / 2 + b.rect.width / 2) - abs(dx)
+            oy = (p.rect.height / 2 + b.rect.height / 2) - abs(dy)
+            if ox < oy:
+                push = ox / 2
+                s = 1 if dx >= 0 else -1
+                p.x += s * push
+                b.x -= s * push
+            else:
+                push = oy / 2
+                s = 1 if dy >= 0 else -1
+                p.y += s * push
+                b.y -= s * push
+            p.sync_rect()
+            b.sync_rect()
 
     def new_game(self):
         self.player = Player(640, 560, self.cfg["bindings"])
         self.boss = Boss(1080, 400)
-        self.bonfire = Bonfire(640, 430)
-        self.room = "hub"
-        self.hub_banner = 2.6
+        self.bonfire = Bonfire(0, 0)
+        self.enter_room("hub", rooms_data.room_by_id("hub")["player_spawn"])
         self.messages.clear()
         self.particles.items.clear()
         self.shake = 0.0
         self.fade = 1.0
         self.death_timer = 0.0
-
-    def enter_arena(self):
-        self.room = "arena"
-        p = self.player
-        p.x, p.y = 150.0, 360.0
-        p.facing = pygame.Vector2(1, 0)
-        p.sync_rect()
-
-    def exit_to_hub(self):
-        self.room = "hub"
-        self.boss.reset()
-        p = self.player
-        p.x, p.y = 1120.0, 400.0
-        p.facing = pygame.Vector2(-1, 0)
-        p.sync_rect()
 
     def message(self, text, color=WHITE, dur=1.4, size="big"):
         for m in self.messages:
@@ -577,10 +654,11 @@ class Game:
         b.hp = min(b.max_hp, max(1, int(bd.get("hp", b.hp))))
         b.aggro = bool(bd.get("aggro", False))
         b.sync_rect()
-        self.room = data.get("room", "hub")
-        if self.room not in ("hub", "arena"):
-            self.room = "hub"
-        if self.room == "hub":
+        room_id = data.get("room", "hub")
+        if not rooms_data.room_by_id(room_id):
+            room_id = "hub"
+        self.enter_room(room_id, (p.x, p.y))
+        if self.hub_banner > 0:
             self.hub_banner = 1.6
         self.state = "play"
         self.fade = 1.0
@@ -676,8 +754,8 @@ class Game:
             if self.death_timer <= 0:
                 self.player.respawn()
                 self.boss.reset()
-                self.room = "hub"
-                self.hub_banner = 2.6
+                hub = rooms_data.room_by_id("hub")
+                self.enter_room("hub", hub["player_spawn"])
                 self.state = "play"
                 self.fade = 1.0
             return
@@ -710,6 +788,7 @@ class Game:
         p = self.player
         b = self.boss
         self.hub_banner = max(0.0, self.hub_banner - dt)
+        self.conn_cooldown = max(0.0, self.conn_cooldown - dt)
         self.bonfire.update(dt)
         p.update(dt, keys)
         if p.just_drank:
@@ -719,24 +798,22 @@ class Game:
             b.update(dt, p)
         self.particles.update(dt)
 
-        if self.room == "hub":
-            p.x = min(p.x, 1175.0)
-            p.clamp()
-            if random.random() < 0.35:
-                bx, by = self.bonfire.pos
-                self.particles.spawn(bx + random.uniform(-8, 8), by - 10, (255, 170, 50), 1, 1.2, 0.8)
-        else:
-            p.x = max(p.x, 105.0)
-            p.clamp()
-            if b.state == "attack" and b.attack_kind == "charge":
-                self.particles.spawn(
-                    b.rect.centerx - b.charge_dir.x * 40,
-                    b.rect.centery + 20,
-                    (180, 60, 40),
-                    2,
-                    2.0,
-                    0.3,
-                 )
+        p.clamp()
+        self.resolve_terrain(p)
+        self.resolve_entity_collision()
+        self.update_camera()
+        if self.room_def.get("bonfire") and random.random() < 0.35:
+            bx, by = self.room_def["bonfire"]
+            self.particles.spawn(bx + random.uniform(-8, 8), by - 10, (255, 170, 50), 1, 1.2, 0.8)
+        if self.room == "arena" and b.state == "attack" and b.attack_kind == "charge":
+            self.particles.spawn(
+                b.rect.centerx - b.charge_dir.x * 40,
+                b.rect.centery + 20,
+                (180, 60, 40),
+                2,
+                2.0,
+                0.3,
+            )
 
         buf = self.input_buffer
         if p.state in ("attack", "roll", "guard") and keys[self.cfg["bindings"]["attack"]]:
@@ -779,22 +856,10 @@ class Game:
                 if r:
                     self.message(t(r), RED, 1.4, "small")
             elif keys[self.cfg["bindings"]["interact"]]:
-                if self.room == "hub" and self.bonfire.in_range(p.rect.center):
-                    if b.aggro and not b.dead:
-                        self.message(t("cannot_rest"), RED, 1.4)
-                    else:
-                        p.hp = p.max_hp()
-                        p.estus = ESTUS_MAX
-                        b.reset()
-                        self.save_current()
-                        self.fade = 1.0
-                        self.message(t("game_saved"), ORANGE, 1.6)
-                elif self.room == "hub" and p.rect.right > 1150 and 200 < p.rect.centery < 520:
-                    self.enter_arena()
-                    self.fade = 0.8
-                elif self.room == "arena" and self.boss.dead and p.rect.left < 130 and 200 < p.rect.centery < 520:
-                    self.exit_to_hub()
-                    self.fade = 0.8
+                if self.try_rest(p, b, t):
+                    pass
+                else:
+                    self.try_connections()
 
         if (
             self.room == "arena"
@@ -867,35 +932,27 @@ class Game:
     def draw(self):
         canvas = self.canvas
         canvas.fill(BG)
-        world = pygame.Surface((WIDTH, HEIGHT))
-        world.blit(self.floor, (0, 0))
-        pygame.draw.rect(world, WALL, (0, 0, WIDTH, HEIGHT), 6)
-        if self.state in ("play", "pause", "died", "victory", "inventory"):
-            if self.room == "hub":
-                self.bonfire.draw(world)
-                self.draw_fog_gate(world, 1244)
-            else:
-                self.draw_fog_gate(world, 0, sealed=not self.boss.dead)
-                self.boss.draw(world)
-            if not self.player.dead:
-                self.player.draw(world)
-            self.particles.draw(world)
-            if self.state == "play":
-                p = self.player
-                if self.room == "hub":
-                    if self.can_rest():
-                        self.draw_interact_hint(world, self.bonfire.pos[0], self.bonfire.pos[1] - 95)
-                    if p.rect.right > 1150 and 200 < p.rect.centery < 520:
-                        self.draw_interact_hint(world, 1195, 370)
-                else:
-                    if p.rect.left < 130 and 200 < p.rect.centery < 520 and self.boss.dead:
-                        self.draw_interact_hint(world, 85, 370)
         if self.shake > 0.02:
-            ox = random.randint(-int(self.shake * 14), int(self.shake * 14))
-            oy = random.randint(-int(self.shake * 14), int(self.shake * 14))
-            canvas.blit(world, (ox, oy))
+            sx = random.randint(-int(self.shake * 14), int(self.shake * 14))
+            sy = random.randint(-int(self.shake * 14), int(self.shake * 14))
         else:
-            canvas.blit(world, (0, 0))
+            sx = sy = 0
+        cx = int(self.cam[0]) + sx
+        cy = int(self.cam[1]) + sy
+        floor = self.get_room_floor(self.room)
+        canvas.blit(floor, (0, 0), (cx, cy, WIDTH, HEIGHT))
+        if self.state in ("play", "pause", "died", "victory", "inventory"):
+            self.draw_connections(canvas, cx, cy)
+            if self.room_def.get("bonfire"):
+                self.bonfire.pos = self.room_def["bonfire"]
+                self.bonfire.draw(canvas, cx, cy)
+            if self.room == "arena":
+                self.boss.draw(canvas, cx, cy)
+            if not self.player.dead:
+                self.player.draw(canvas, cx, cy)
+            self.particles.draw(canvas, cx, cy)
+            if self.state == "play":
+                self.draw_interact_hints(canvas, cx, cy)
 
         if self.state in ("play", "pause", "died", "inventory"):
             self.draw_hud(canvas)
@@ -931,11 +988,72 @@ class Game:
         else:
             pygame.transform.smoothscale(canvas, win.get_size(), win)
 
+    def draw_connections(self, canvas, cx, cy):
+        for conn in self.room_def["connections"]:
+            rect = pygame.Rect(conn["rect"])
+            if conn["kind"] == "fog":
+                sealed = conn.get("sealed") == "boss_alive" and not self.boss.dead
+                self.draw_fog_gate(canvas, rect.x - cx, sealed=sealed)
+            else:
+                self.draw_door(canvas, rect.x - cx, rect.y - cy, rect.w, rect.h)
+
+    def draw_door(self, surf, x, y, w, h):
+        pygame.draw.rect(surf, (20, 18, 24), (x, y, w, h))
+        pygame.draw.rect(surf, (110, 100, 80), (x, y, w, h), 3)
+        pygame.draw.line(surf, (150, 138, 110), (x + w // 2, y + 4), (x + w // 2, y + h - 4), 2)
+
+    def draw_interact_hints(self, canvas, cx, cy):
+        p = self.player
+        pos = self.room_def.get("bonfire")
+        if pos and self.can_rest():
+            self.draw_interact_hint(canvas, pos[0] - cx, pos[1] - 95 - cy)
+        for conn in self.room_def["connections"]:
+            rect = pygame.Rect(conn["rect"])
+            if not rect.inflate(30, 30).colliderect(p.rect):
+                continue
+            if conn.get("sealed") == "boss_alive" and not self.boss.dead:
+                continue
+            self.draw_interact_hint(canvas, rect.centerx - cx, rect.centery - cy)
+            break
+
+    def try_rest(self, p, b, t):
+        pos = self.room_def.get("bonfire")
+        if not pos:
+            return False
+        if (p.rect.centerx - pos[0]) ** 2 + (p.rect.centery - pos[1]) ** 2 > 60 ** 2:
+            return False
+        if b.aggro and not b.dead:
+            self.message(t("cannot_rest"), RED, 1.4)
+        else:
+            p.hp = p.max_hp()
+            p.estus = ESTUS_MAX
+            b.reset()
+            self.save_current()
+            self.fade = 1.0
+            self.message(t("game_saved"), ORANGE, 1.6)
+        return True
+
+    def try_connections(self):
+        if self.conn_cooldown > 0:
+            return
+        for conn in self.room_def["connections"]:
+            rect = pygame.Rect(conn["rect"])
+            if not rect.inflate(30, 30).colliderect(self.player.rect):
+                continue
+            if conn.get("sealed") == "boss_alive" and not self.boss.dead:
+                continue
+            if self.room == "arena" and conn["to"] == "hub":
+                self.boss.reset()
+            self.enter_room(conn["to"], conn["spawn"])
+            self.fade = 0.8
+            break
+
     def can_rest(self):
         p, b = self.player, self.boss
-        if self.room != "hub" or p.dead or (b.aggro and not b.dead):
+        pos = self.room_def.get("bonfire")
+        if not pos or p.dead or (b.aggro and not b.dead):
             return False
-        return self.bonfire.in_range(p.rect.center)
+        return (p.rect.centerx - pos[0]) ** 2 + (p.rect.centery - pos[1]) ** 2 <= 60 ** 2
 
     def slot_accepts(self, key, item_id):
         item = items_data.get(item_id)
@@ -1262,7 +1380,7 @@ class Game:
         fade_in = min(1.0, (2.6 - bt) / 0.4)
         fade_out = min(1.0, bt / 0.5)
         alpha = int(255 * min(fade_in, fade_out))
-        img = self.fonts["big"].render(i18n.t("firelink"), True, (200, 200, 210))
+        img = self.fonts["big"].render(i18n.t(self.room_banner_key or "firelink"), True, (200, 200, 210))
         img.set_alpha(alpha)
         surf.blit(img, img.get_rect(center=(WIDTH // 2, 190)))
 
