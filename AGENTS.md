@@ -9,15 +9,14 @@ Python + pygame project. Run with `.venv/bin/python main.py` or `./run.sh`.
 - Version number lives in `settings.py` (`VERSION`).
 
 ## Testing
-Headless smoke tests live in `/tmp/opencode/test_*.py` (may be cleaned up between sessions):
+Headless smoke tests live in `tests/` (run from repo root):
+- test_combat.py — core combat mechanics + feel (hitstun/hitstop/buffer)
 - test_rooms.py — hub/arena room transitions, fog gate interact
-- test_regression.py — core combat mechanics
-- test_v3.py — menus, mouse, keybind conflicts
-- test_changelog.py — changelog browser
-- test_display.py — display modes, resolution
-- test_newgame_confirm.py — overwrite-save confirm
+- test_menus.py — menus, mouse, keybind conflicts, changelog browser
+- test_inventory.py — inventory UI, save/load, migrations
 
-Run a test: `PYTHONPATH=. .venv/bin/python /tmp/opencode/<test>.py`
+Run: `.venv/bin/python tests/<file>.py` (all use SDL dummy driver,
+isolated config via temp dir)
 
 ## Key architecture
 - Fixed 1280x720 canvas scaled to window; two rooms: "hub" (Firelink Shrine + bonfire) and "arena" (boss, entered via fog gate with interact key).
