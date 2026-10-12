@@ -14,6 +14,7 @@ Headless smoke tests live in `tests/` (run from repo root):
 - test_rooms.py — hub/arena room transitions, fog gate interact
 - test_menus.py — menus, mouse, keybind conflicts, changelog browser
 - test_inventory.py — inventory UI, save/load, migrations
+- test_enemies.py — mobs: patrol/aggro/leash, melee/ranged, souls
 
 Run: `.venv/bin/python tests/<file>.py` (all use SDL dummy driver,
 isolated config via temp dir)
