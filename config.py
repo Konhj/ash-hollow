@@ -25,6 +25,7 @@ DEFAULTS = {
     "display_mode": 0,
     "language": "en",
     "show_keys": True,
+    "input_buffer": 0.15,
     "bindings": dict(DEFAULT_BINDINGS),
 }
 
@@ -76,6 +77,11 @@ def load_config():
             cfg["language"] = DEFAULTS["language"]
         if "show_keys" in data:
             cfg["show_keys"] = bool(data["show_keys"])
+        if "input_buffer" in data:
+            try:
+                cfg["input_buffer"] = max(0.0, min(0.6, float(data["input_buffer"])))
+            except Exception:
+                pass
     except Exception:
         pass
     return cfg

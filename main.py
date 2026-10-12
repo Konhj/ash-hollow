@@ -259,6 +259,8 @@ class Game:
         self.inv_cells = []
         self.inv_equip_cells = []
         self.inv_tab_rects = []
+        self.hitstop = 0.0
+        self.input_buffer = {"action": None, "timer": 0.0}
         self.state = "main_menu"
         self.build_main_menu()
         self.new_game()
@@ -348,6 +350,7 @@ class Game:
     def on_player_hit(self):
         p = self.player
         self.shake = max(self.shake, 0.7)
+        self.hitstop = max(self.hitstop, HITSTOP_HIT)
         self.particles.spawn(p.rect.centerx, p.rect.centery, (200, 40, 40), 12, 3.5, 0.4)
 
     def disable_ime(self):
@@ -694,6 +697,15 @@ class Game:
             self.inv_hover = None
             return
 
+        if self.player.dead:
+            self.state = "died"
+            self.death_timer = 2.4
+            return
+
+        if self.hitstop > 0:
+            self.hitstop -= dt
+            return
+
         t = i18n.t
         p = self.player
         b = self.boss
@@ -724,19 +736,31 @@ class Game:
                     2,
                     2.0,
                     0.3,
-                )
+                 )
 
-        if p.dead:
-            self.state = "died"
-            self.death_timer = 2.4
-            return
+        buf = self.input_buffer
+        if p.state in ("attack", "roll", "guard") and keys[self.cfg["bindings"]["attack"]]:
+            buf["action"] = "attack"
+            buf["timer"] = self.cfg["input_buffer"]
+        elif p.state != "idle":
+            buf["timer"] = max(0.0, buf["timer"] - dt)
+
+        if p.state == "attack" and keys[self.cfg["bindings"]["roll"]]:
+            r = p.start_roll()
+            if r:
+                self.message(t(r), RED, 1.4, "small")
 
         if p.state == "idle":
-            if self.room == "arena" and keys[self.cfg["bindings"]["attack"]] and not b.dead:
+            want_attack = keys[self.cfg["bindings"]["attack"]] or (
+                buf["action"] == "attack" and buf["timer"] > 0
+            )
+            if self.room == "arena" and want_attack and not b.dead:
                 if b.state == "staggered" and p.center_dist(b) < 130:
                     r = p.start_riposte()
                 else:
                     r = p.start_attack()
+                buf["action"] = None
+                buf["timer"] = 0.0
                 if r:
                     self.message(t(r), RED, 1.4, "small")
             elif keys[self.cfg["bindings"]["roll"]]:
@@ -793,6 +817,7 @@ class Game:
                     b.state = "recover"
                     b.state_timer = 0.8
                     self.shake = 1.2
+                    self.hitstop = max(self.hitstop, HITSTOP_RIPOSTE)
                     self.particles.spawn(b.rect.centerx, b.rect.centery, (255, 200, 60), 24, 5.0, 0.6)
                     self.message(t("riposte_msg"), YELLOW, 1.2)
 
@@ -805,6 +830,7 @@ class Game:
                         b.stagger(2.5)
                         p.invuln = 0.5
                         self.shake = 0.6
+                        self.hitstop = max(self.hitstop, HITSTOP_PARRY)
                         self.particles.spawn(p.rect.centerx, p.rect.centery, (255, 255, 255), 14, 4.0, 0.4)
                         self.message(t("parry_msg"), YELLOW, 1.2)
                     elif p.take_damage(SLASH_DAMAGE, b.dir):
@@ -818,6 +844,7 @@ class Game:
                 if not b.slam_landed:
                     b.slam_landed = True
                     self.shake = 1.4
+                    self.hitstop = max(self.hitstop, HITSTOP_SLAM)
                     self.particles.spawn(b.rect.centerx, b.rect.bottom, (120, 90, 60), 26, 4.0, 0.5)
                     if p.center_dist(b) <= SLAM_RADIUS:
                         if p.take_damage(SLAM_DAMAGE, b.dir):
@@ -826,6 +853,7 @@ class Game:
                 if not b.blast_landed:
                     b.blast_landed = True
                     self.shake = 1.6
+                    self.hitstop = max(self.hitstop, HITSTOP_SLAM)
                     self.particles.spawn(b.rect.centerx, b.rect.centery, (255, 70, 60), 40, 6.0, 0.6)
                     if p.center_dist(b) <= BLAST_RADIUS:
                         if p.take_damage(BLAST_DAMAGE, b.dir):

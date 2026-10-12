@@ -215,7 +215,7 @@ class Player:
             if self.state_timer <= 0:
                 self.state = "idle"
                 self.roll_cooldown = ROLL_COOLDOWN
-        elif self.state in ("attack", "riposte", "drink"):
+        elif self.state in ("attack", "riposte", "drink", "hitstun"):
             self.state_timer -= dt
             if self.state_timer <= 0:
                 if self.state == "drink":
@@ -313,9 +313,11 @@ class Player:
                 final = max(1, int(final * (1 - sh["stats"].get("defense", 0.0))))
         self.hp -= final
         self.flash = 0.18
+        self.state = "hitstun"
+        self.state_timer = PLAYER_HITSTUN
         if from_dir is not None:
-            self.x += from_dir.x * 14
-            self.y += from_dir.y * 14
+            self.x += from_dir.x * KNOCKBACK_DIST
+            self.y += from_dir.y * KNOCKBACK_DIST
             self.clamp()
         if self.hp <= 0:
             self.hp = 0

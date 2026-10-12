@@ -20,6 +20,15 @@ GRAY = (140, 140, 150)
 PLAYER_SPEED = 3.4
 SPRINT_MULT = 1.9
 SPRINT_DRAIN = 26.0
+
+# 战斗手感(可自行调)
+PLAYER_HITSTUN = 0.25      # 受击硬直时长(秒)
+KNOCKBACK_DIST = 18.0      # 受击击退距离(px)
+INPUT_BUFFER_TIME = 0.15   # 输入缓冲默认值(实际取 config 的 input_buffer)
+HITSTOP_HIT = 0.07         # Boss 命中玩家的打击停顿
+HITSTOP_PARRY = 0.12       # 弹反成功
+HITSTOP_RIPOSTE = 0.16     # 处决
+HITSTOP_SLAM = 0.10        # 跳砸/炸气命中
 PLAYER_MAX_HP = 100
 PLAYER_MAX_STAMINA = 100
 STAMINA_REGEN = 30.0
