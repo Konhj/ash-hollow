@@ -40,6 +40,7 @@ ROOMS = {
         "size": (1280, 720),
         "player_spawn": (150, 360),
         "banner": None,
+        "combat": True,
         "solid_rects": [
             (0, 0, 1280, 16),
             (0, 704, 1280, 16),
@@ -62,6 +63,12 @@ ROOMS = {
         "player_spawn": (2440, 720),
         "bonfire": None,
         "banner": None,
+        "combat": True,
+        "enemies": [
+            ("hollow_soldier", (1250, 520)),
+            ("hollow_archer", (1900, 780)),
+            ("hollow_raider", (1500, 1120)),
+        ],
         "solid_rects": [
             (0, 0, 2560, 16),
             (0, 1424, 2560, 16),

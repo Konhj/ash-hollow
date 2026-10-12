@@ -15,6 +15,7 @@ import i18n
 import changelog
 import items as items_data
 import rooms as rooms_data
+from enemies import Enemy
 
 if sys.platform == "win32":
     try:
@@ -266,6 +267,9 @@ class Game:
         self.hitstop = 0.0
         self.input_buffer = {"action": None, "timer": 0.0}
         self.conn_cooldown = 0.0
+        self.enemies = []
+        self.projectiles = []
+        self.killed_enemies = set()
         self.state = "main_menu"
         self.build_main_menu()
         self.new_game()
@@ -342,6 +346,7 @@ class Game:
         self.player.x, self.player.y = float(spawn[0]), float(spawn[1])
         self.player.sync_rect()
         self.conn_cooldown = 0.4
+        self.spawn_enemies(room_id)
         self.snap_camera()
         banner = room.get("banner")
         if banner:
@@ -349,6 +354,15 @@ class Game:
             self.hub_banner = 2.6
         else:
             self.hub_banner = 0.0
+
+    def spawn_enemies(self, room_id):
+        self.enemies = []
+        self.projectiles = []
+        room = rooms_data.room_by_id(room_id)
+        for i, (eid, pos) in enumerate(room.get("enemies", [])):
+            if (room_id, i) in self.killed_enemies:
+                continue
+            self.enemies.append(Enemy(eid, pos[0], pos[1], index=i))
 
     def snap_camera(self):
         w, h = self.room_def["size"]
@@ -384,28 +398,33 @@ class Game:
                 r = ent.rect
 
     def resolve_entity_collision(self):
-        p, b = self.player, self.boss
-        if self.room != "arena" or b.dead:
-            return
-        if p.rect.colliderect(b.rect):
-            dx = p.rect.centerx - b.rect.centerx
-            dy = p.rect.centery - b.rect.centery
-            if dx == 0 and dy == 0:
-                dx = 1
-            ox = (p.rect.width / 2 + b.rect.width / 2) - abs(dx)
-            oy = (p.rect.height / 2 + b.rect.height / 2) - abs(dy)
-            if ox < oy:
-                push = ox / 2
-                s = 1 if dx >= 0 else -1
-                p.x += s * push
-                b.x -= s * push
-            else:
-                push = oy / 2
-                s = 1 if dy >= 0 else -1
-                p.y += s * push
-                b.y -= s * push
-            p.sync_rect()
-            b.sync_rect()
+        bodies = [self.player]
+        if self.room == "arena" and not self.boss.dead:
+            bodies.append(self.boss)
+        bodies += [e for e in self.enemies if not e.dead]
+        for i in range(len(bodies)):
+            for j in range(i + 1, len(bodies)):
+                a, b = bodies[i], bodies[j]
+                if not a.rect.colliderect(b.rect):
+                    continue
+                dx = a.rect.centerx - b.rect.centerx
+                dy = a.rect.centery - b.rect.centery
+                if dx == 0 and dy == 0:
+                    dx = 1
+                ox = (a.rect.width / 2 + b.rect.width / 2) - abs(dx)
+                oy = (a.rect.height / 2 + b.rect.height / 2) - abs(dy)
+                if ox < oy:
+                    push = ox / 2
+                    s = 1 if dx >= 0 else -1
+                    a.x += s * push
+                    b.x -= s * push
+                else:
+                    push = oy / 2
+                    s = 1 if dy >= 0 else -1
+                    a.y += s * push
+                    b.y -= s * push
+                a.sync_rect()
+                b.sync_rect()
 
     def new_game(self):
         self.player = Player(640, 560, self.cfg["bindings"])
@@ -414,6 +433,7 @@ class Game:
         self.enter_room("hub", rooms_data.room_by_id("hub")["player_spawn"])
         self.messages.clear()
         self.particles.items.clear()
+        self.killed_enemies.clear()
         self.shake = 0.0
         self.fade = 1.0
         self.death_timer = 0.0
@@ -620,6 +640,8 @@ class Game:
                 "boss": {"x": b.x, "y": b.y, "hp": b.hp, "aggro": b.aggro},
                 "inventory": list(p.inventory),
                 "equipment": dict(p.equipment),
+                "souls": p.souls,
+                "killed": [list(k) for k in self.killed_enemies],
             }
         )
 
@@ -649,6 +671,10 @@ class Game:
                 p.equipment[k] = v if v and items_data.get(v) else None
         p._prev_max_hp = p.max_hp()
         p.hp = min(p.max_hp(), max(1, int(pd.get("hp", p.max_hp()))))
+        p.souls = max(0, int(data.get("souls", 0)))
+        self.killed_enemies = {
+            tuple(k) for k in data.get("killed", []) if isinstance(k, list) and len(k) == 2
+        }
         b.x = bd.get("x", b.x)
         b.y = bd.get("y", b.y)
         b.hp = min(b.max_hp, max(1, int(bd.get("hp", b.hp))))
@@ -754,6 +780,7 @@ class Game:
             if self.death_timer <= 0:
                 self.player.respawn()
                 self.boss.reset()
+                self.killed_enemies.clear()
                 hub = rooms_data.room_by_id("hub")
                 self.enter_room("hub", hub["player_spawn"])
                 self.state = "play"
@@ -796,10 +823,15 @@ class Game:
             self.particles.spawn(p.rect.centerx, p.rect.centery, (120, 220, 120), 10, 2.2, 0.5)
         if self.room == "arena":
             b.update(dt, p)
+        for e in self.enemies:
+            e.update(dt, p, self.room_def)
+        self.update_projectiles(dt)
         self.particles.update(dt)
 
         p.clamp()
         self.resolve_terrain(p)
+        for e in self.enemies:
+            self.resolve_terrain(e)
         self.resolve_entity_collision()
         self.update_camera()
         if self.room_def.get("bonfire") and random.random() < 0.35:
@@ -831,9 +863,12 @@ class Game:
             want_attack = keys[self.cfg["bindings"]["attack"]] or (
                 buf["action"] == "attack" and buf["timer"] > 0
             )
-            if self.room == "arena" and want_attack and not b.dead:
-                if b.state == "staggered" and p.center_dist(b) < 130:
-                    r = p.start_riposte()
+            if self.can_fight() and want_attack:
+                if self.room == "arena" and not b.dead:
+                    if b.state == "staggered" and p.center_dist(b) < 130:
+                        r = p.start_riposte()
+                    else:
+                        r = p.start_attack()
                 else:
                     r = p.start_attack()
                 buf["action"] = None
@@ -844,7 +879,7 @@ class Game:
                 r = p.start_roll()
                 if r:
                     self.message(t(r), RED, 1.4, "small")
-            elif self.room == "arena" and keys[self.cfg["bindings"]["offhand"]]:
+            elif self.can_fight() and keys[self.cfg["bindings"]["offhand"]]:
                 if p.shield() is not None:
                     p.start_guard()
                 else:
@@ -873,6 +908,29 @@ class Game:
                 p.attack_landed = True
                 b.take_damage(p.current_attack_damage())
                 self.particles.spawn(hb.centerx, hb.centery, (255, 220, 120), 6, 3.0, 0.3)
+
+        if (
+            self.room != "hub"
+            and p.state == "attack"
+            and not p.attack_landed
+            and p.attack_active()
+        ):
+            hb = p.get_attack_hitbox()
+            for e in self.enemies:
+                if e.dead:
+                    continue
+                if hb.colliderect(e.rect):
+                    p.attack_landed = True
+                    e.take_damage(p.current_attack_damage())
+                    self.particles.spawn(hb.centerx, hb.centery, (255, 220, 120), 6, 3.0, 0.3)
+                    break
+
+        for e in list(self.enemies):
+            if e.dead and e.state == "dying" and e.state_timer <= 0:
+                self.enemies.remove(e)
+                self.killed_enemies.add((self.room, e.index))
+                self.player.souls += e.data["souls"]
+                self.particles.spawn(e.x, e.y, (255, 200, 90), 14, 3.0, 0.5)
 
         if self.room == "arena" and p.state == "riposte" and not p.riposte_done:
             if (RIPOSTE_TIME - p.state_timer) >= 0.25:
@@ -929,6 +987,60 @@ class Game:
             self.state = "victory"
             self.message(t("victory"), YELLOW, 2.0)
 
+        for e in self.enemies:
+            if e.dead or e.state != "attack":
+                continue
+            atk = e.attacks().get(e.attack_kind, {})
+            if "projectile" in atk:
+                if not e.shot_fired:
+                    e.shot_fired = True
+                    pr = atk["projectile"]
+                    self.projectiles.append(
+                        {
+                            "x": e.x,
+                            "y": e.y,
+                            "vx": e.dir.x * pr["speed"],
+                            "vy": e.dir.y * pr["speed"],
+                            "r": pr["radius"],
+                            "dmg": atk["damage"],
+                            "life": pr["range"] / pr["speed"],
+                            "color": pr["color"],
+                        }
+                    )
+            elif not e.hit_landed:
+                hr = e.current_hit_rect()
+                if hr and hr.colliderect(p.rect):
+                    e.hit_landed = True
+                    if p.take_damage(atk["damage"], e.dir):
+                        self.on_player_hit()
+
+    def update_projectiles(self, dt):
+        p = self.player
+        alive = []
+        for pr in self.projectiles:
+            pr["x"] += pr["vx"]
+            pr["y"] += pr["vy"]
+            pr["life"] -= dt
+            gone = pr["life"] <= 0
+            if not gone:
+                rect = pygame.Rect(0, 0, pr["r"] * 2, pr["r"] * 2)
+                rect.center = (pr["x"], pr["y"])
+                if rect.colliderect(p.rect):
+                    v = pygame.Vector2(pr["vx"], pr["vy"])
+                    if v.length_squared() > 0:
+                        v = v.normalize()
+                    if p.take_damage(pr["dmg"], v):
+                        self.on_player_hit()
+                    gone = True
+                else:
+                    for sr in self.room_def["solid_rects"]:
+                        if rect.colliderect(sr):
+                            gone = True
+                            break
+            if not gone:
+                alive.append(pr)
+        self.projectiles = alive
+
     def draw(self):
         canvas = self.canvas
         canvas.fill(BG)
@@ -948,6 +1060,10 @@ class Game:
                 self.bonfire.draw(canvas, cx, cy)
             if self.room == "arena":
                 self.boss.draw(canvas, cx, cy)
+            for e in self.enemies:
+                e.draw(canvas, cx, cy)
+            for pr in self.projectiles:
+                pygame.draw.circle(canvas, pr["color"], (int(pr["x"] - cx), int(pr["y"] - cy)), pr["r"])
             if not self.player.dead:
                 self.player.draw(canvas, cx, cy)
             self.particles.draw(canvas, cx, cy)
@@ -1016,6 +1132,9 @@ class Game:
             self.draw_interact_hint(canvas, rect.centerx - cx, rect.centery - cy)
             break
 
+    def can_fight(self):
+        return self.room_def.get("combat", False)
+
     def try_rest(self, p, b, t):
         pos = self.room_def.get("bonfire")
         if not pos:
@@ -1028,6 +1147,8 @@ class Game:
             p.hp = p.max_hp()
             p.estus = ESTUS_MAX
             b.reset()
+            self.killed_enemies.clear()
+            self.spawn_enemies(self.room)
             self.save_current()
             self.fade = 1.0
             self.message(t("game_saved"), ORANGE, 1.6)
@@ -1519,6 +1640,10 @@ class Game:
         draw_bar(surf, 30, 60, w_st, 10, self.player.stamina / self.player.max_stamina(), GREEN, DARK_GREEN)
         for i in range(ESTUS_MAX):
             self.draw_flask(surf, 30 + i * 32, 84, i < self.player.estus)
+        souls_img = self.fonts["small"].render(
+            f"{i18n.t('souls')} {self.player.souls}", True, (235, 210, 120)
+        )
+        surf.blit(souls_img, (30, 116))
         if self.room == "arena" and self.boss.aggro and not self.boss.dead:
             w = 840
             x = (WIDTH - w) // 2

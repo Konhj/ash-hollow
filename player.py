@@ -16,6 +16,7 @@ class Player:
         self.last_move = pygame.Vector2(0, 0)
         self.inventory = list(items_data.DEFAULT_INVENTORY)
         self.equipment = dict(items_data.DEFAULT_EQUIPMENT)
+        self.souls = 0
         self.reset_stats()
 
     def shield(self):
