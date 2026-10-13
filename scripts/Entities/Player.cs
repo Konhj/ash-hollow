@@ -20,7 +20,8 @@ public partial class Player : Entity
     public Dictionary<string, string> Equipment = new();
 
     public int Souls;
-    public int Hp, Stamina, Estus;
+    public int Hp, Estus;
+    public float Stamina;
     public string State = "idle";
     public float StateTimer;
     public float Invuln;
@@ -271,7 +272,7 @@ public partial class Player : Entity
                         MoveAndSlide();
                         Clamp();
                     }
-                    Stamina = Math.Max(0, Stamina - (int)(S.GuardDrain * dt));
+                    Stamina = Mathf.Max(0, Stamina - S.GuardDrain * dt);
                     if (Stamina <= 0)
                     {
                         State = "idle";
@@ -285,7 +286,7 @@ public partial class Player : Entity
                 bool sprinting = sprintHeld && Stamina > 0;
                 if (!sprintHeld)
                 {
-                    Stamina = Math.Min(MaxStamina(), Stamina + (int)(S.StaminaRegen * dt));
+                    Stamina = Mathf.Min(MaxStamina(), Stamina + S.StaminaRegen * dt);
                 }
                 if (move.LengthSquared() > 0)
                 {
@@ -296,7 +297,7 @@ public partial class Player : Entity
                     Clamp();
                     if (sprinting)
                     {
-                        Stamina = Math.Max(0, Stamina - (int)(S.SprintDrain * dt));
+                        Stamina = Mathf.Max(0, Stamina - S.SprintDrain * dt);
                     }
                 }
                 break;
