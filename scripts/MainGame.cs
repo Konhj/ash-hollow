@@ -60,8 +60,6 @@ public partial class MainGame : Node2D
     readonly List<Projectile> _projectiles = new();
     readonly Dictionary<string, ImageTexture> _floorCache = new();
 
-    static readonly PackedScene PlayerScene = GD.Load<PackedScene>("res://scenes/entities/Player.tscn");
-    static readonly PackedScene BossScene = GD.Load<PackedScene>("res://scenes/entities/Boss.tscn");
     static readonly PackedScene EnemyScene = GD.Load<PackedScene>("res://scenes/entities/Enemy.tscn");
     static readonly Dictionary<string, string> RoomScenePaths = new()
     {
@@ -104,43 +102,21 @@ public partial class MainGame : Node2D
         I18n.SetLang(Config.Language);
         Config.ApplyDisplay();
 
-        _floorSprite = new Sprite2D { Centered = false };
-        AddChild(_floorSprite);
-
-        Boss = BossScene.Instantiate<Boss>();
-        AddChild(Boss);
-        Boss.ZIndex = 10;
+        _floorSprite = GetNode<Sprite2D>("Floor");
+        Boss = GetNode<Boss>("Boss");
         Boss.Reset();
-
-        _enemiesLayer = new Node2D();
-        AddChild(_enemiesLayer);
-        _enemiesLayer.ZIndex = 20;
-
-        var projLayer = new ProjLayer(this);
-        AddChild(projLayer);
-        projLayer.ZIndex = 30;
-
-        Player = PlayerScene.Instantiate<Player>();
+        _enemiesLayer = GetNode<Node2D>("Enemies");
+        Player = GetNode<Player>("Player");
         Player.Inventory.AddRange(ItemsDb.DefaultInventory);
         foreach (var kv in ItemsDb.DefaultEquipment)
         {
             Player.Equipment[kv.Key] = kv.Value;
         }
-        AddChild(Player);
-        Player.ZIndex = 40;
-
-        _fx = new FxLayer(this);
-        _fx.ZIndex = 50;
-        AddChild(_fx);
-
-        _camera = new Camera2D();
-        AddChild(_camera);
+        _fx = GetNode<FxLayer>("FxLayer");
+        _camera = GetNode<Camera2D>("Camera2D");
         _camera.MakeCurrent();
-
-        _uiLayer = new CanvasLayer();
-        AddChild(_uiLayer);
-        _ui = new UiOverlay(this);
-        _uiLayer.AddChild(_ui);
+        _uiLayer = GetNode<CanvasLayer>("UiLayer");
+        _ui = GetNode<UiOverlay>("UiLayer/UiOverlay");
 
         EnterRoom("hub", Vector2.Zero);
         BuildMainMenu();
@@ -2122,55 +2098,5 @@ public partial class MainGame : Node2D
     static void DrawSetTransformHelper(CanvasItem c, Vector2 pos, Vector2 scale)
     {
         c.DrawSetTransform(pos, 0, scale);
-    }
-}
-
-/// <summary>世界层特效(粒子/交互提示),Z 序在实体之上。</summary>
-public partial class FxLayer : Node2D
-{
-    readonly MainGame _game;
-
-    public FxLayer(MainGame game)
-    {
-        _game = game;
-    }
-
-    public override void _Draw()
-    {
-        _game.DrawFx(this);
-    }
-}
-
-/// <summary>弹丸层(小怪之上、玩家之下)。</summary>
-public partial class ProjLayer : Node2D
-{
-    readonly MainGame _game;
-
-    public ProjLayer(MainGame game)
-    {
-        _game = game;
-    }
-
-    public override void _Draw()
-    {
-        _game.DrawProjectiles(this);
-    }
-}
-
-/// <summary>屏幕层 UI 绘制(CanvasLayer,对应旧 pygame 的 canvas 叠加层)。</summary>
-public partial class UiOverlay : Control
-{
-    readonly MainGame _game;
-
-    public UiOverlay(MainGame game)
-    {
-        _game = game;
-        MouseFilter = MouseFilterEnum.Ignore;
-        Size = new Vector2(S.Width, S.Height);
-    }
-
-    public override void _Draw()
-    {
-        _game.DrawUi(this);
     }
 }

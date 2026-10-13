@@ -1,6 +1,44 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=7 format=3]
 
-[ext_resource type="Script" path="res://scripts/MainGame.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/MainGame.cs" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/entities/Player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/entities/Boss.tscn" id="3_boss"]
+[ext_resource type="Script" path="res://scripts/World/FxLayer.cs" id="4_fx"]
+[ext_resource type="Script" path="res://scripts/World/ProjLayer.cs" id="5_proj"]
+[ext_resource type="Script" path="res://scripts/UI/UiOverlay.cs" id="6_ui"]
 
 [node name="Main" type="Node2D"]
-script = ExtResource("1")
+script = ExtResource("1_main")
+
+[node name="Floor" type="Sprite2D" parent="."]
+centered = false
+z_index = 0
+
+[node name="Boss" parent="." instance=ExtResource("3_boss")]
+z_index = 10
+
+[node name="Enemies" type="Node2D" parent="."]
+z_index = 20
+
+[node name="ProjLayer" type="Node2D" parent="."]
+z_index = 30
+script = ExtResource("5_proj")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+z_index = 40
+
+[node name="FxLayer" type="Node2D" parent="."]
+z_index = 50
+script = ExtResource("4_fx")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="UiLayer" type="CanvasLayer" parent="."]
+
+[node name="UiOverlay" type="Control" parent="UiLayer"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+script = ExtResource("6_ui")
