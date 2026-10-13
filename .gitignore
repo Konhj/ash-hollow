@@ -32,6 +32,9 @@ TASKS.md
 # pygame 原型参考(独立仓库,仅本地,不入本仓库)
 old/
 
+# 开发工具脚本(仅本地)
+tools/
+
 # 本地运行产物
 config.json
 save.json
