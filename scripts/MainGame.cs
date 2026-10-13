@@ -276,7 +276,7 @@ public partial class MainGame : Node2D
             return;
         }
         bool clicked = MouseClicked();
-        if (clicked && _versionRect.HasPoint(MousePos))
+        if (clicked && _menu.Capture == null && _versionRect.HasPoint(MousePos))
         {
             OpenChangelog();
             return;
