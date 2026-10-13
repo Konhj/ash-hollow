@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+﻿[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/World/RoomRoot.cs" id="1_room"]
 [ext_resource type="Script" path="res://scripts/World/Connection.cs" id="2_conn"]
@@ -30,8 +30,8 @@ size = Vector2(36, 240)
 
 [node name="Outpost" type="Node2D"]
 script = ExtResource("1_room")
-room_id = "outpost"
-room_size = Vector2i(2560, 1440)
+RoomId = "outpost"
+RoomSize = Vector2i(2560, 1440)
 
 [node name="Terrain" type="Node2D" parent="."]
 
@@ -99,8 +99,8 @@ collision_mask = 0
 monitoring = false
 monitorable = false
 script = ExtResource("2_conn")
-target_room = "hub"
-kind = "door"
+TargetRoom = "hub"
+Kind = "door"
 
 [node name="Shape" type="CollisionShape2D" parent="Connections/ToHub"]
 position = Vector2(2542, 720)
@@ -117,17 +117,17 @@ position = Vector2(2440, 720)
 [node name="HollowSoldier" type="Node2D" parent="Enemies"]
 position = Vector2(1250, 520)
 script = ExtResource("3_spawn")
-eid = "hollow_soldier"
-patrol_points = PackedVector2Array(Vector2(1250, 520), Vector2(1550, 520))
+Eid = "hollow_soldier"
+PatrolPoints = PackedVector2Array(1250, 520, 1550, 520)
 
 [node name="HollowArcher" type="Node2D" parent="Enemies"]
 position = Vector2(1900, 780)
 script = ExtResource("3_spawn")
-eid = "hollow_archer"
-patrol_points = PackedVector2Array(Vector2(1850, 780), Vector2(2050, 780))
+Eid = "hollow_archer"
+PatrolPoints = PackedVector2Array(1850, 780, 2050, 780)
 
 [node name="HollowRaider" type="Node2D" parent="Enemies"]
 position = Vector2(1500, 1120)
 script = ExtResource("3_spawn")
-eid = "hollow_raider"
-patrol_points = PackedVector2Array(Vector2(1400, 1080), Vector2(1700, 1080), Vector2(1700, 1220))
+Eid = "hollow_raider"
+PatrolPoints = PackedVector2Array(1400, 1080, 1700, 1080, 1700, 1220)

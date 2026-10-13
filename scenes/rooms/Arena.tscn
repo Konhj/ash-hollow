@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+﻿[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/World/RoomRoot.cs" id="1_room"]
 [ext_resource type="Script" path="res://scripts/World/Connection.cs" id="2_conn"]
@@ -23,8 +23,8 @@ size = Vector2(36, 320)
 
 [node name="Arena" type="Node2D"]
 script = ExtResource("1_room")
-room_id = "arena"
-room_size = Vector2i(1280, 720)
+RoomId = "arena"
+RoomSize = Vector2i(1280, 720)
 
 [node name="Terrain" type="Node2D" parent="."]
 
@@ -76,9 +76,9 @@ collision_mask = 0
 monitoring = false
 monitorable = false
 script = ExtResource("2_conn")
-target_room = "hub"
-kind = "fog"
-sealed = "boss_alive"
+TargetRoom = "hub"
+Kind = "fog"
+Sealed = "boss_alive"
 
 [node name="Shape" type="CollisionShape2D" parent="Connections/ToHub"]
 position = Vector2(18, 360)
