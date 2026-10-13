@@ -50,6 +50,10 @@ public partial class MainGame : Node2D
     CanvasLayer _uiLayer;
     UiOverlay _ui;
     FxLayer _fx;
+    Node2D _enemiesLayer;
+    readonly List<Enemy> _enemies = new();
+    readonly List<Projectile> _projectiles = new();
+    readonly HashSet<(string room, int index)> _killed = new();
     readonly Dictionary<string, ImageTexture> _floorCache = new();
     readonly Dictionary<string, Key> _bindings = new()
     {
@@ -67,6 +71,7 @@ public partial class MainGame : Node2D
         Fonts.Load();
         ItemsDb.Load();
         RoomDb.Load();
+        EnemyDb.Load();
 
         _floorSprite = new Sprite2D { Centered = false };
         AddChild(_floorSprite);
@@ -78,6 +83,12 @@ public partial class MainGame : Node2D
         AddChild(Boss);
         Boss.Position = new Vector2(1080, 400);
         Boss.Reset();
+
+        _enemiesLayer = new Node2D();
+        AddChild(_enemiesLayer);
+
+        var projLayer = new ProjLayer(this);
+        AddChild(projLayer);
 
         Player = new Player();
         Player.Inventory.AddRange(ItemsDb.DefaultInventory);
@@ -179,14 +190,30 @@ public partial class MainGame : Node2D
         {
             Boss.Update(dt, Player);
         }
+        foreach (var e in _enemies)
+        {
+            e.Update(dt, Player);
+        }
+        UpdateProjectiles(dt);
         Particles.Update(dt);
 
         Player.Clamp();
         Collision.ResolveTerrain(Player, RoomDef.SolidRects);
+        foreach (var e in _enemies)
+        {
+            Collision.ResolveTerrain(e, RoomDef.SolidRects);
+        }
         var bodies = new List<Entity> { Player };
         if (RoomId == "arena" && !Boss.Dead)
         {
             bodies.Add(Boss);
+        }
+        foreach (var e in _enemies)
+        {
+            if (!e.Dead)
+            {
+                bodies.Add(e);
+            }
         }
         Collision.ResolveEntities(bodies);
         UpdateCamera();
@@ -283,6 +310,8 @@ public partial class MainGame : Node2D
         }
 
         ResolvePlayerAttackVsBoss();
+        ResolvePlayerAttackVsEnemies();
+        ProcessEnemyDeaths();
         ResolveRiposte();
         ResolveBossAttacks();
         if (RoomId == "arena" && Boss.Dead && Boss.StateTimer <= 0)
@@ -290,6 +319,132 @@ public partial class MainGame : Node2D
             State = GameState.Victory;
             Message(I18n.T("victory"), Palette.Yellow, 2.0f, Fonts.Big);
         }
+        ResolveEnemyAttacks();
+    }
+
+    void ResolvePlayerAttackVsEnemies()
+    {
+        if (RoomId == "hub" || Player.State != "attack" || Player.AttackLanded || !Player.AttackActive())
+        {
+            return;
+        }
+        var hb = Player.GetAttackHitbox();
+        foreach (var e in _enemies)
+        {
+            if (e.Dead)
+            {
+                continue;
+            }
+            if (hb.Intersects(e.Body, includeBorders: true))
+            {
+                Player.AttackLanded = true;
+                e.TakeDamage(Player.CurrentAttackDamage());
+                Particles.Spawn(hb.GetCenter(), Palette.RGB(255, 220, 120), 6, 3.0f, 0.3f);
+                break;
+            }
+        }
+    }
+
+    void ProcessEnemyDeaths()
+    {
+        for (int i = _enemies.Count - 1; i >= 0; i--)
+        {
+            var e = _enemies[i];
+            if (e.Dead && e.State == "dying" && e.StateTimer <= 0)
+            {
+                _enemies.RemoveAt(i);
+                _killed.Add((RoomId, e.Index));
+                Player.Souls += EnemyDb.Souls(e.Data);
+                Particles.Spawn(e.Position, Palette.RGB(255, 200, 90), 14, 3.0f, 0.5f);
+                e.QueueFree();
+            }
+        }
+    }
+
+    void ResolveEnemyAttacks()
+    {
+        foreach (var e in _enemies)
+        {
+            if (e.Dead || e.State != "attack")
+            {
+                continue;
+            }
+            var atk = e.Attack(e.AttackKind);
+            if (atk == null)
+            {
+                continue;
+            }
+            if (atk["projectile"] != null)
+            {
+                if (!e.ShotFired)
+                {
+                    e.ShotFired = true;
+                    var pr = atk["projectile"] as System.Text.Json.Nodes.JsonObject;
+                    float speed = (float)pr["speed"].GetValue<double>();
+                    _projectiles.Add(new Projectile
+                    {
+                        Pos = e.Position,
+                        Vel = e.Dir * speed,
+                        R = (float)pr["radius"].GetValue<double>(),
+                        Dmg = (int)atk["damage"].GetValue<double>(),
+                        Life = (float)pr["range"].GetValue<double>() / speed,
+                        Color = ColorFromJson(pr["color"]),
+                    });
+                }
+            }
+            else if (!e.HitLanded)
+            {
+                var hr = e.CurrentHitRect();
+                if (hr.HasValue && hr.Value.Intersects(Player.Body, includeBorders: true))
+                {
+                    e.HitLanded = true;
+                    if (Player.TakeDamage((int)atk["damage"].GetValue<double>(), e.Dir))
+                    {
+                        OnPlayerHit();
+                    }
+                }
+            }
+        }
+    }
+
+    void UpdateProjectiles(float dt)
+    {
+        for (int i = _projectiles.Count - 1; i >= 0; i--)
+        {
+            var pr = _projectiles[i];
+            pr.Update(dt);
+            bool gone = pr.Gone;
+            if (!gone && pr.Rect.Intersects(Player.Body, includeBorders: true))
+            {
+                var v = pr.Vel.LengthSquared() > 0 ? pr.Vel.Normalized() : Vector2.Zero;
+                if (Player.TakeDamage(pr.Dmg, v))
+                {
+                    OnPlayerHit();
+                }
+                gone = true;
+            }
+            if (!gone)
+            {
+                foreach (var sr in RoomDef.SolidRects)
+                {
+                    if (pr.Rect.Intersects(sr, includeBorders: true))
+                    {
+                        gone = true;
+                        break;
+                    }
+                }
+            }
+            if (gone)
+            {
+                _projectiles.RemoveAt(i);
+            }
+        }
+    }
+
+    static Color ColorFromJson(System.Text.Json.Nodes.JsonNode n)
+    {
+        var a = n.AsArray();
+        return Palette.RGB((int)a[0].GetValue<double>(), (int)a[1].GetValue<double>(), (int)a[2].GetValue<double>());
     }
 
     void ResolvePlayerAttackVsBoss()
@@ -417,6 +572,7 @@ public partial class MainGame : Node2D
         {
             Player.Respawn();
             Boss.Reset();
+            _killed.Clear();
             EnterRoom("hub", RoomDb.Get("hub").PlayerSpawn);
             State = GameState.Play;
             _fade = 1f;
@@ -440,6 +596,7 @@ public partial class MainGame : Node2D
     {
         Boss.Reset();
         Player.Respawn();
+        _killed.Clear();
         _messages.Clear();
         Particles.Clear();
         EnterRoom("hub", RoomDb.Get("hub").PlayerSpawn);
@@ -477,6 +634,8 @@ public partial class MainGame : Node2D
             Player.Hp = Player.MaxHp();
             Player.Estus = S.EstusMax;
             Boss.Reset();
+            _killed.Clear();
+            SpawnEnemies(RoomId);
             _fade = 1f;
             Message(I18n.T("game_saved"), Palette.Orange, 1.6f, Fonts.Big);
         }
@@ -520,6 +679,7 @@ public partial class MainGame : Node2D
         Boss.WorldBounds = room.Size;
         Player.Position = spawn;
         _connCooldown = 0.4f;
+        SpawnEnemies(roomId);
         SnapCamera();
         if (room.Banner != null)
         {
@@ -529,6 +689,28 @@ public partial class MainGame : Node2D
         else
         {
             _hubBanner = 0;
+        }
+    }
+
+    void SpawnEnemies(string roomId)
+    {
+        foreach (var e in _enemies)
+        {
+            e.QueueFree();
+        }
+        _enemies.Clear();
+        _projectiles.Clear();
+        var room = RoomDb.Get(roomId);
+        for (int i = 0; i < room.EnemySpawns.Count; i++)
+        {
+            if (_killed.Contains((roomId, i)))
+            {
+                continue;
+            }
+            var (eid, pos) = room.EnemySpawns[i];
+            var e = new Enemy(eid, pos, i);
+            _enemiesLayer.AddChild(e);
+            _enemies.Add(e);
         }
     }
 
@@ -714,6 +896,15 @@ public partial class MainGame : Node2D
         if (State == GameState.Play)
         {
             DrawInteractHints(c);
+        }
+    }
+
+    /// <summary>弹丸层(在小怪之上、玩家之下)。</summary>
+    public void DrawProjectiles(CanvasItem c)
+    {
+        foreach (var pr in _projectiles)
+        {
+            c.DrawCircle(pr.Pos, pr.R, pr.Color);
         }
     }
 
@@ -923,6 +1114,22 @@ public partial class FxLayer : Node2D
     public override void _Draw()
     {
         _game.DrawFx(this);
+    }
+}
+
+/// <summary>弹丸层(小怪之上、玩家之下)。</summary>
+public partial class ProjLayer : Node2D
+{
+    readonly MainGame _game;
+
+    public ProjLayer(MainGame game)
+    {
+        _game = game;
+    }
+
+    public override void _Draw()
+    {
+        _game.DrawProjectiles(this);
     }
 }
 
