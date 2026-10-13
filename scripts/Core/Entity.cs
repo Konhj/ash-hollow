@@ -44,4 +44,10 @@ public partial class Entity : CharacterBody2D
     {
         SetDeferred(PropertyName.CollisionLayer, 0);
     }
+
+    /// <summary>显隐与碰撞开关(如 Boss 仅在竞技场活动)。</summary>
+    public void SetCollisionEnabled(bool enabled)
+    {
+        SetDeferred(PropertyName.CollisionLayer, enabled ? LayerEntities : 0);
+    }
 }

@@ -1407,6 +1407,9 @@ public partial class MainGame : Node2D
         _roomNode.ZIndex = 1;
         Room = _roomNode as RoomRoot;
         RoomId = roomId;
+        bool inArena = roomId == "arena";
+        Boss.Visible = inArena;
+        Boss.SetCollisionEnabled(inArena && !Boss.Dead);
         _floorSprite.Texture = GetFloor(roomId);
         var size = new Vector2(Room.RoomSize.X, Room.RoomSize.Y);
         Player.WorldBounds = size;
