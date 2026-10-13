@@ -210,7 +210,8 @@ public partial class MainGame : Node2D
 
     bool Held(string action) => Input.IsKeyPressed(Config.Bindings[action]);
 
-    Vector2 MousePos => GetGlobalMousePosition();
+    /// <summary>鼠标位置(UI 层本地坐标 = 1280x720 画布空间,不受分辨率缩放与镜头偏移影响)。</summary>
+    Vector2 MousePos => _ui.GetLocalMousePosition();
 
     bool MouseClicked()
     {
