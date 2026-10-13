@@ -51,6 +51,8 @@ public partial class MainGame : Node2D
 
     Sprite2D _floorSprite;
     Node2D _roomNode;
+    Node2D _projLayer;
+    bool _inArena;
     Camera2D _camera;
     CanvasLayer _uiLayer;
     UiOverlay _ui;
@@ -106,6 +108,7 @@ public partial class MainGame : Node2D
         Boss = GetNode<Boss>("Boss");
         Boss.Reset();
         _enemiesLayer = GetNode<Node2D>("Enemies");
+        _projLayer = GetNode<Node2D>("ProjLayer");
         Player = GetNode<Player>("Player");
         Player.Inventory.AddRange(ItemsDb.DefaultInventory);
         foreach (var kv in ItemsDb.DefaultEquipment)
@@ -131,6 +134,8 @@ public partial class MainGame : Node2D
         _time += dt;
         _fade = Mathf.Max(0, _fade - dt * 1.5f);
         _shake = Mathf.Max(0, _shake - dt * 2.2f);
+
+        UpdateWorldVisibility();
 
         if (JustKey(Key.Escape))
         {
@@ -261,6 +266,22 @@ public partial class MainGame : Node2D
     {
         BuildMainMenu();
         State = GameState.MainMenu;
+    }
+
+    /// <summary>世界层仅在非主菜单状态显示(对应 pygame:主菜单只画纯色底)。</summary>
+    void UpdateWorldVisibility()
+    {
+        bool show = State != GameState.MainMenu;
+        _floorSprite.Visible = show;
+        if (_roomNode != null)
+        {
+            _roomNode.Visible = show;
+        }
+        Boss.Visible = show && _inArena;
+        _enemiesLayer.Visible = show;
+        _projLayer.Visible = show;
+        Player.Visible = show;
+        _fx.Visible = show;
     }
 
     void UpdateMainMenu()
@@ -1407,9 +1428,8 @@ public partial class MainGame : Node2D
         _roomNode.ZIndex = 1;
         Room = _roomNode as RoomRoot;
         RoomId = roomId;
-        bool inArena = roomId == "arena";
-        Boss.Visible = inArena;
-        Boss.SetCollisionEnabled(inArena && !Boss.Dead);
+        _inArena = roomId == "arena";
+        Boss.SetCollisionEnabled(_inArena && !Boss.Dead);
         _floorSprite.Texture = GetFloor(roomId);
         var size = new Vector2(Room.RoomSize.X, Room.RoomSize.Y);
         Player.WorldBounds = size;
