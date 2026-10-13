@@ -115,6 +115,7 @@ public partial class MainGame : Node2D
         {
             Player.Equipment[kv.Key] = kv.Value;
         }
+        Player.ResetStats(); // 子节点 _Ready 早于 S.Init,此处按加载后的全局常量重新初始化
         _fx = GetNode<FxLayer>("FxLayer");
         _camera = GetNode<Camera2D>("Camera2D");
         _camera.MakeCurrent();

@@ -73,11 +73,12 @@ public partial class RoomRoot : Node2D
 
     public override void _Draw()
     {
+        bool bossDefeated = MainGame.Game != null && MainGame.Game.BossDefeated;
         foreach (var conn in Connections)
         {
             if (conn.Kind == "fog")
             {
-                DrawFogGate(conn.InteractRect, conn.Sealed == "boss_alive" && !MainGame.Game.BossDefeated);
+                DrawFogGate(conn.InteractRect, conn.Sealed == "boss_alive" && !bossDefeated);
             }
             else
             {

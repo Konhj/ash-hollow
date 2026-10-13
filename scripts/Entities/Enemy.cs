@@ -300,6 +300,10 @@ public partial class Enemy : Entity
 
     public override void _Draw()
     {
+        if (Data == null)
+        {
+            return;
+        }
         float alpha = Dead ? Mathf.Max(0, StateTimer / 0.5f) : 1f;
         if (alpha <= 0)
         {

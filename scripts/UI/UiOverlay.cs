@@ -11,7 +11,6 @@ public partial class UiOverlay : Control
     {
         _game = FindGame();
         MouseFilter = MouseFilterEnum.Ignore;
-        Size = new Vector2(S.Width, S.Height);
     }
 
     public override void _Draw()
