@@ -25,6 +25,13 @@ obj/
 # 私有设计文档(不入库,沿用旧约定)
 DESIGN.md
 
+# 开发文档(仅本地,不上传 GitHub)
+AGENTS.md
+TASKS.md
+
+# pygame 原型参考(独立仓库,仅本地,不入本仓库)
+old/
+
 # 本地运行产物
 config.json
 save.json
