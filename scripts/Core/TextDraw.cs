@@ -15,12 +15,14 @@ public static class TextDraw
             text, HorizontalAlignment.Left, -1, size, color);
     }
 
-    /// <summary>水平居中,pos 为文本中心。</summary>
+    /// <summary>水平居中,pos 为文本中心。
+    /// 注意:DrawString 的 alignment 仅在 width&gt;0 时生效,这里手动计算 x 偏移。</summary>
     public static void Center(CanvasItem c, Font font, Vector2 pos, string text, int size, Color color)
     {
+        float w = font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
         float half = (font.GetAscent(size) - font.GetDescent(size)) / 2f;
-        c.DrawString(font, pos + new Vector2(0, half),
-            text, HorizontalAlignment.Center, -1, size, color);
+        c.DrawString(font, pos + new Vector2(-w / 2f, half),
+            text, HorizontalAlignment.Left, -1, size, color);
     }
 
     /// <summary>水平居中 + 最大宽度(超出自动缩字号,对应旧 fit_text)。</summary>
