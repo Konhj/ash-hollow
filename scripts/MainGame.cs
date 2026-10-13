@@ -210,7 +210,7 @@ public partial class MainGame : Node2D
 
     bool Held(string action) => Input.IsKeyPressed(Config.Bindings[action]);
 
-    Vector2 MousePos => GetViewport().GetMousePosition();
+    Vector2 MousePos => GetGlobalMousePosition();
 
     bool MouseClicked()
     {
