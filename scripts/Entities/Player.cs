@@ -38,7 +38,9 @@ public partial class Player : Entity
 
     public override void _Ready()
     {
+        base._Ready();
         Size = new Vector2(30, 46);
+        SetCollisionShape(Size);
         ResetStats();
     }
 
@@ -226,7 +228,6 @@ public partial class Player : Entity
         {
             return;
         }
-        float frame = dt * 60f;
         Invuln = Mathf.Max(0, Invuln - dt);
         RollCooldown = Mathf.Max(0, RollCooldown - dt);
         Flash = Mathf.Max(0, Flash - dt);
@@ -266,7 +267,8 @@ public partial class Player : Entity
                     if (move.LengthSquared() > 0)
                     {
                         Facing = move;
-                        Position += move * S.PlayerSpeed * S.GuardSpeedMult * frame;
+                        Velocity = move * S.PlayerSpeed * S.GuardSpeedMult * 60f;
+                        MoveAndSlide();
                         Clamp();
                     }
                     Stamina = Math.Max(0, Stamina - (int)(S.GuardDrain * dt));
@@ -289,7 +291,8 @@ public partial class Player : Entity
                 {
                     Facing = move;
                     float spd = sprinting ? S.PlayerSpeed * S.SprintMult : S.PlayerSpeed;
-                    Position += move * spd * frame;
+                    Velocity = move * spd * 60f;
+                    MoveAndSlide();
                     Clamp();
                     if (sprinting)
                     {
@@ -300,7 +303,8 @@ public partial class Player : Entity
             }
             case "roll":
             {
-                Position += RollDir * S.RollSpeed * frame;
+                Velocity = RollDir * S.RollSpeed * 60f;
+                MoveAndSlide();
                 Clamp();
                 StateTimer -= dt;
                 if (StateTimer <= 0)
@@ -503,6 +507,7 @@ public partial class Player : Entity
         {
             Hp = 0;
             Dead = true;
+            DisableCollision();
         }
         return true;
     }

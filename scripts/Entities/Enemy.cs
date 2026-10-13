@@ -91,6 +91,7 @@ public partial class Enemy : Entity
     public override void _Ready()
     {
         base._Ready();
+        SetCollisionShape(Size);
         QueueRedraw();
     }
 
@@ -110,14 +111,15 @@ public partial class Enemy : Entity
         return null;
     }
 
-    bool MoveToward(Vector2 target, float speed)
+    bool MoveToward(Vector2 target, float speedPerFrame)
     {
         var d = target - Position;
         if (d.Length() < 3)
         {
             return true;
         }
-        Position += d.Normalized() * speed;
+        Velocity = d.Normalized() * speedPerFrame * 60f;
+        MoveAndSlide();
         return false;
     }
 
@@ -135,6 +137,7 @@ public partial class Enemy : Entity
             State = "dying";
             StateTimer = 0.5f;
             HitLanded = true;
+            DisableCollision();
         }
         else
         {

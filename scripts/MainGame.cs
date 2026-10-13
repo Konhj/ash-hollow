@@ -47,6 +47,7 @@ public partial class MainGame : Node2D
     readonly List<Msg> _messages = new();
 
     Sprite2D _floorSprite;
+    Node2D _terrainNode;
     Camera2D _camera;
     CanvasLayer _uiLayer;
     UiOverlay _ui;
@@ -756,24 +757,6 @@ public partial class MainGame : Node2D
         Particles.Update(dt);
 
         Player.Clamp();
-        Collision.ResolveTerrain(Player, RoomDef.SolidRects);
-        foreach (var e in _enemies)
-        {
-            Collision.ResolveTerrain(e, RoomDef.SolidRects);
-        }
-        var bodies = new List<Entity> { Player };
-        if (RoomId == "arena" && !Boss.Dead)
-        {
-            bodies.Add(Boss);
-        }
-        foreach (var e in _enemies)
-        {
-            if (!e.Dead)
-            {
-                bodies.Add(e);
-            }
-        }
-        Collision.ResolveEntities(bodies);
         UpdateCamera();
 
         if (RoomDef.BonfirePos.HasValue && GD.Randf() < 0.35f)
@@ -1417,6 +1400,7 @@ public partial class MainGame : Node2D
         RoomId = roomId;
         RoomDef = room;
         _floorSprite.Texture = GetFloor(roomId);
+        BuildTerrain(room);
         Player.WorldBounds = room.Size;
         Boss.WorldBounds = room.Size;
         Player.Position = spawn;
@@ -1431,6 +1415,27 @@ public partial class MainGame : Node2D
         else
         {
             _hubBanner = 0;
+        }
+    }
+
+    void BuildTerrain(RoomDef room)
+    {
+        if (_terrainNode != null)
+        {
+            _terrainNode.QueueFree();
+        }
+        _terrainNode = new Node2D();
+        AddChild(_terrainNode);
+        foreach (var sr in room.SolidRects)
+        {
+            var body = new StaticBody2D { CollisionLayer = 1, CollisionMask = 0 };
+            var shape = new CollisionShape2D
+            {
+                Shape = new RectangleShape2D { Size = sr.Size },
+                Position = sr.GetCenter(),
+            };
+            body.AddChild(shape);
+            _terrainNode.AddChild(body);
         }
     }
 

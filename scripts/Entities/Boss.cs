@@ -46,7 +46,9 @@ public partial class Boss : Entity
 
     public override void _Ready()
     {
+        base._Ready();
         Size = new Vector2(64, 110);
+        SetCollisionShape(Size);
         _spawn = Position;
         Reset();
     }
@@ -103,6 +105,7 @@ public partial class Boss : Entity
             Dead = true;
             State = "dying";
             StateTimer = 1.6f;
+            DisableCollision();
             return;
         }
         if (HasPhase2 && Phase == 1 && Hp <= MaxHp * S.Phase2HpFraction)
@@ -157,7 +160,6 @@ public partial class Boss : Entity
 
     public void Update(float dt, Player player)
     {
-        float frame = dt * 60f;
         Flash = Mathf.Max(0, Flash - dt);
         AnimT += dt;
         if (State == "dying")
@@ -203,7 +205,8 @@ public partial class Boss : Entity
             case "idle":
                 if (dist > 130)
                 {
-                    Position += Dir * S.BossSpeed * frame;
+                    Velocity = Dir * S.BossSpeed * 60f;
+                    MoveAndSlide();
                     Clamp();
                 }
                 AttackCd -= dt;
@@ -220,7 +223,8 @@ public partial class Boss : Entity
                     {
                         Dir = (player.Position - Position).Normalized();
                     }
-                    Position += Dir * S.SlamTrackSpeed * frame;
+                    Velocity = Dir * S.SlamTrackSpeed * 60f;
+                    MoveAndSlide();
                     Clamp();
                 }
                 if (StateTimer <= 0)
@@ -239,7 +243,8 @@ public partial class Boss : Entity
                     float elapsed = Duration["charge"] - StateTimer;
                     float p = Mathf.Min(1, Mathf.Max(0, elapsed / Duration["charge"]));
                     float spd = S.ChargeSpeed * 6f * p * (1f - p);
-                    Position += ChargeDir * spd * frame;
+                    Velocity = ChargeDir * spd * 60f;
+                    MoveAndSlide();
                     Clamp();
                 }
                 if (StateTimer <= 0)
