@@ -1,0 +1,32 @@
+# Godot 4+ specific ignores
+.godot/
+
+# Godot-specific ignores
+.import/
+export.cfg
+export_credentials.cfg
+
+# Mono-specific ignores
+.mono/
+data_*/
+mono_crash.*.json
+
+# .NET / C#
+.vs/
+bin/
+obj/
+*.user
+*.userprefs
+*.pid
+
+# Visual Studio Code
+.vscode/
+
+# 私有设计文档(不入库,沿用旧约定)
+DESIGN.md
+
+# 本地运行产物
+config.json
+save.json
+saves/
+logs/

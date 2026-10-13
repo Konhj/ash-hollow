@@ -1,0 +1,80 @@
+{
+  "hollow_soldier": {
+    "name": { "en": "HOLLOW SOLDIER", "zh": "活尸士兵" },
+    "max_hp": 120,
+    "speed": 1.6,
+    "souls": 50,
+    "size": [30, 46],
+    "color": [95, 62, 40],
+    "attacks": {
+      "slash": {
+        "windup": 0.55,
+        "duration": 0.18,
+        "recover": 0.6,
+        "damage": 18,
+        "range": 55,
+        "hitbox": [90, 70]
+      }
+    },
+    "ai": {
+      "aggro_radius": 320,
+      "leash_radius": 600,
+      "patrol": { "type": "pingpong", "points": [[1250, 520], [1550, 520]] },
+      "patrol_speed": 0.8,
+      "disengage_heal": true,
+      "attack_cd": [1.2, 2.0]
+    }
+  },
+  "hollow_archer": {
+    "name": { "en": "HOLLOW ARCHER", "zh": "活尸弓手" },
+    "max_hp": 80,
+    "speed": 1.2,
+    "souls": 40,
+    "size": [30, 46],
+    "color": [80, 66, 58],
+    "attacks": {
+      "shot": {
+        "windup": 0.8,
+        "duration": 0.1,
+        "recover": 0.8,
+        "damage": 12,
+        "range": 340,
+        "projectile": { "speed": 6.0, "radius": 5, "range": 500, "color": [205, 185, 130] }
+      }
+    },
+    "ai": {
+      "aggro_radius": 380,
+      "leash_radius": 700,
+      "patrol": { "type": "pingpong", "points": [[1850, 780], [2050, 780]] },
+      "patrol_speed": 0.7,
+      "disengage_heal": true,
+      "attack_cd": [1.6, 2.6]
+    }
+  },
+  "hollow_raider": {
+    "name": { "en": "HOLLOW RAIDER", "zh": "活尸掠袭者" },
+    "max_hp": 180,
+    "speed": 2.2,
+    "souls": 70,
+    "size": [32, 48],
+    "color": [120, 70, 45],
+    "attacks": {
+      "slash": {
+        "windup": 0.45,
+        "duration": 0.16,
+        "recover": 0.5,
+        "damage": 20,
+        "range": 55,
+        "hitbox": [90, 70]
+      }
+    },
+    "ai": {
+      "aggro_radius": 300,
+      "leash_radius": 600,
+      "patrol": { "type": "route", "points": [[1400, 1080], [1700, 1080], [1700, 1220]] },
+      "patrol_speed": 1.0,
+      "disengage_heal": true,
+      "attack_cd": [0.9, 1.6]
+    }
+  }
+}

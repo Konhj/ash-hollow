@@ -1,0 +1,77 @@
+{
+  "version": "1.2.0",
+  "width": 1280,
+  "height": 720,
+  "fps": 60,
+
+  "resolutions": [
+    [1280, 720],
+    [1600, 900],
+    [1920, 1080],
+    [2560, 1440],
+    [3840, 2160]
+  ],
+
+  "colors": {
+    "bg": [10, 10, 14],
+    "floor": [26, 26, 32],
+    "floor_dark": [20, 20, 26],
+    "wall": [44, 44, 52],
+    "red": [180, 30, 30],
+    "dark_red": [110, 18, 18],
+    "green": [70, 180, 80],
+    "dark_green": [30, 70, 36],
+    "orange": [240, 150, 40],
+    "yellow": [240, 210, 90],
+    "white": [235, 235, 235],
+    "gray": [140, 140, 150]
+  },
+
+  "player": {
+    "speed": 3.4,
+    "sprint_mult": 1.9,
+    "sprint_drain": 26.0,
+    "hitstun": 0.25,
+    "knockback_dist": 18.0,
+    "input_buffer_time": 0.15,
+    "hitstop_hit": 0.07,
+    "hitstop_parry": 0.12,
+    "hitstop_riposte": 0.16,
+    "hitstop_slam": 0.10,
+    "max_hp": 100,
+    "max_stamina": 100,
+    "stamina_regen": 30.0,
+    "attack_cost": 22,
+    "roll_cost": 30,
+    "riposte_cost": 15,
+    "guard_speed_mult": 0.35,
+    "guard_drain": 12.0,
+    "roll_speed": 8.0,
+    "roll_time": 0.30,
+    "roll_cooldown": 0.12,
+    "attack_time": 0.36,
+    "attack_active_start": 0.08,
+    "attack_active_end": 0.22,
+    "attack_damage": 30,
+    "attack_range": 60,
+    "riposte_time": 0.55,
+    "estus_max": 3,
+    "estus_heal": 40,
+    "drink_time": 0.65
+  },
+
+  "boss": {
+    "max_hp": 1000,
+    "speed": 2.2,
+    "charge_speed": 10.0,
+    "slash_damage": 20,
+    "charge_damage": 25,
+    "slam_damage": 30,
+    "slam_radius": 160,
+    "blast_damage": 35,
+    "blast_radius": 190,
+    "phase2_hp_fraction": 0.5,
+    "phase2_windup_mult": 0.6,
+    "slam_track_speed": 4.8
+  }
+}
