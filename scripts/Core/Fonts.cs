@@ -41,24 +41,21 @@ public static class Fonts
 
     private static Font LoadFile(string path)
     {
-        var f = new FontFile();
-        var err = f.LoadDynamicFont(path);
-        if (err != Error.Ok)
+        if (ResourceLoader.Exists(path))
         {
-            GD.PushError($"Fonts: cannot load {path} ({err})");
-            return null;
+            var f = ResourceLoader.Load<FontFile>(path);
+            if (f != null)
+            {
+                return f;
+            }
         }
-        return f;
+        GD.PushError($"Fonts: cannot load {path}");
+        return null;
     }
 
     private static Font LoadQuiet(string path)
     {
-        if (!FileAccess.FileExists(path))
-        {
-            return null;
-        }
-        var f = new FontFile();
-        return f.LoadDynamicFont(path) == Error.Ok ? f : null;
+        return ResourceLoader.Exists(path) ? ResourceLoader.Load<FontFile>(path) : null;
     }
 
     /// <summary>含 CJK 字符用中文字体,否则用英文正文字体。</summary>
