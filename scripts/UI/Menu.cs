@@ -20,7 +20,8 @@ public class MenuItem
 /// </summary>
 public class Menu
 {
-    public string Title = "";
+    /// <summary>标题为惰性求值(每帧调用),切换语言时自动跟随。</summary>
+    public Func<string> Title;
     public List<MenuItem> Items = new();
     public int Selected;
     public int StartY = 300;
@@ -32,10 +33,10 @@ public class Menu
     public string Capture;
     public List<Rect2> HitRects = new();
 
-    readonly Stack<(string title, List<MenuItem> items, int sel, int startY, int step, int columns,
+    readonly Stack<(Func<string> title, List<MenuItem> items, int sel, int startY, int step, int columns,
         Func<(string, Color)> hint, Func<string> warning, bool titleFont)> _stack = new();
 
-    public void Set(string title, List<MenuItem> items, int startY = 300, int step = 56,
+    public void Set(Func<string> title, List<MenuItem> items, int startY = 300, int step = 56,
         int columns = 1, Func<(string, Color)> hint = null, bool titleFont = false,
         Func<string> warning = null)
     {
@@ -51,7 +52,7 @@ public class Menu
         HitRects.Clear();
     }
 
-    public void Push(string title, List<MenuItem> items, int startY = 300, int step = 56,
+    public void Push(Func<string> title, List<MenuItem> items, int startY = 300, int step = 56,
         int columns = 1, Func<(string, Color)> hint = null, bool titleFont = false,
         Func<string> warning = null)
     {
@@ -197,11 +198,15 @@ public class Menu
 
     public void Draw(CanvasItem c, Font titleFont = null)
     {
-        if (!string.IsNullOrEmpty(Title))
+        if (Title != null)
         {
-            var font = TitleFont && titleFont != null ? titleFont : Fonts.Pick(Title);
-            TextDraw.Center(c, font, new Vector2(S.Width / 2f, 150), Title,
-                TitleFont ? Fonts.TitleSize : Fonts.Big, Palette.RGB(220, 220, 228));
+            var titleText = Title();
+            if (!string.IsNullOrEmpty(titleText))
+            {
+                var font = TitleFont && titleFont != null ? titleFont : Fonts.Pick(titleText);
+                TextDraw.Center(c, font, new Vector2(S.Width / 2f, 150), titleText,
+                    TitleFont ? Fonts.TitleSize : Fonts.Big, Palette.RGB(220, 220, 228));
+            }
         }
         if (Warning != null)
         {

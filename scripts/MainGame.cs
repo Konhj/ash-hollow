@@ -316,7 +316,7 @@ public partial class MainGame : Node2D
                 Action = () => BuildConfirm("confirm_quit", () => GetTree().Quit()),
             },
         };
-        _menu.Set(I18n.T("game_title"), items, titleFont: true);
+        _menu.Set(() => I18n.T("game_title"), items, titleFont: true);
         _clMode = null;
     }
 
@@ -332,7 +332,7 @@ public partial class MainGame : Node2D
                 Action = () => BuildConfirm("confirm_save_exit", SaveAndExit),
             },
         };
-        _menu.Set(I18n.T("pause"), items);
+        _menu.Set(() => I18n.T("pause"), items);
     }
 
     void BuildConfirm(string questionKey, System.Action yesAction, string warningKey = null)
@@ -342,7 +342,7 @@ public partial class MainGame : Node2D
             new() { Label = () => I18n.T("yes"), Action = yesAction },
             new() { Label = () => I18n.T("no"), Action = () => _menu.Pop() },
         };
-        _menu.Push(I18n.T(questionKey), items, startY: 330, step: 60,
+        _menu.Push(() => I18n.T(questionKey), items, startY: 330, step: 60,
             warning: warningKey == null ? null : () => I18n.T(warningKey));
     }
 
@@ -392,7 +392,7 @@ public partial class MainGame : Node2D
             new() { Label = KeysLabel, Adjust = AdjustShowKeys },
             new() { Label = () => I18n.T("back"), Action = () => _menu.Pop() },
         };
-        _menu.Push(I18n.T("settings"), items,
+        _menu.Push(() => I18n.T("settings"), items,
             hint: () => (I18n.T("adjust_hint"), Palette.Gray));
     }
 
@@ -423,7 +423,7 @@ public partial class MainGame : Node2D
             });
         }
         items.Add(new MenuItem { Label = () => I18n.T("back"), Action = () => _menu.Pop() });
-        _menu.Push(I18n.T("key_bindings"), items, startY: 250, step: 60, columns: 2,
+        _menu.Push(() => I18n.T("key_bindings"), items, startY: 250, step: 60, columns: 2,
             hint: () => BindingConflicts().Count > 0 ? (I18n.T("key_conflict"), Palette.RGB(255, 90, 90)) : default);
     }
 
