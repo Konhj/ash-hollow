@@ -196,6 +196,21 @@ public partial class Player : Entity
         ResetStats();
     }
 
+    /// <summary>新游戏:重置背包/装备/灵魂/状态(对应旧 pygame 新建 Player)。</summary>
+    public void ResetProfile()
+    {
+        Inventory.Clear();
+        Inventory.AddRange(ItemsDb.DefaultInventory);
+        Equipment.Clear();
+        foreach (var kv in ItemsDb.DefaultEquipment)
+        {
+            Equipment[kv.Key] = kv.Value;
+        }
+        Souls = 0;
+        Facing = Vector2.Right;
+        ResetStats();
+    }
+
     public void Clamp()
     {
         var w = WorldBounds.X;

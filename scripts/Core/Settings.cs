@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json.Nodes;
 using Godot;
 
@@ -11,6 +12,7 @@ public static class S
 {
     public static int Width, Height;
     public static string Version;
+    public static List<Vector2I> Resolutions = new();
 
     public static float PlayerSpeed, SprintMult, SprintDrain;
     public static float PlayerHitstun, KnockbackDist, InputBufferTime;
@@ -38,6 +40,12 @@ public static class S
         Version = s["version"]?.GetValue<string>() ?? "0.0.0";
         Width = I(s, "width");
         Height = I(s, "height");
+        Resolutions.Clear();
+        foreach (var r in s["resolutions"].AsArray())
+        {
+            var a = r.AsArray();
+            Resolutions.Add(new Vector2I((int)a[0].GetValue<double>(), (int)a[1].GetValue<double>()));
+        }
 
         var p = s["player"];
         PlayerSpeed = F(p, "speed");
