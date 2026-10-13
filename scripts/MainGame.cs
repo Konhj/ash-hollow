@@ -17,6 +17,7 @@ public partial class MainGame : Node2D
     public string RoomId;
     public RoomDef RoomDef;
     public Player Player;
+    public Boss Boss;
     public Bonfire Bonfire;
     public readonly Particles Particles = new();
 
@@ -73,6 +74,11 @@ public partial class MainGame : Node2D
         Bonfire = new Bonfire();
         AddChild(Bonfire);
 
+        Boss = new Boss();
+        AddChild(Boss);
+        Boss.Position = new Vector2(1080, 400);
+        Boss.Reset();
+
         Player = new Player();
         Player.Inventory.AddRange(ItemsDb.DefaultInventory);
         foreach (var kv in ItemsDb.DefaultEquipment)
@@ -111,7 +117,7 @@ public partial class MainGame : Node2D
         {
             case GameState.Play: UpdatePlay(dt); break;
             case GameState.Died: UpdateDied(dt); break;
-            case GameState.Victory: Particles.Update(dt); break;
+            case GameState.Victory: UpdateVictory(); break;
         }
 
         for (int i = _messages.Count - 1; i >= 0; i--)
@@ -169,10 +175,20 @@ public partial class MainGame : Node2D
             Player.JustDrank = false;
             Particles.Spawn(Player.Position, Palette.RGB(120, 220, 120), 10, 2.2f, 0.5f);
         }
+        if (RoomId == "arena")
+        {
+            Boss.Update(dt, Player);
+        }
         Particles.Update(dt);
 
         Player.Clamp();
         Collision.ResolveTerrain(Player, RoomDef.SolidRects);
+        var bodies = new List<Entity> { Player };
+        if (RoomId == "arena" && !Boss.Dead)
+        {
+            bodies.Add(Boss);
+        }
+        Collision.ResolveEntities(bodies);
         UpdateCamera();
 
         if (RoomDef.BonfirePos.HasValue && GD.Randf() < 0.35f)
@@ -180,6 +196,11 @@ public partial class MainGame : Node2D
             var b = RoomDef.BonfirePos.Value;
             Particles.Spawn(new Vector2(b.X + GD.RandRange(-8, 8), b.Y - 10),
                 Palette.RGB(255, 170, 50), 1, 1.2f, 0.8f);
+        }
+        if (RoomId == "arena" && Boss.State == "attack" && Boss.AttackKind == "charge")
+        {
+            Particles.Spawn(Boss.Position + new Vector2(-Boss.ChargeDir.X * 40, 20),
+                Palette.RGB(180, 60, 40), 2, 2.0f, 0.3f);
         }
 
         bool attackHeld = Held("attack");
@@ -206,7 +227,15 @@ public partial class MainGame : Node2D
             bool wantAttack = attackHeld || (_inputBuffer.action == "attack" && _inputBuffer.timer > 0);
             if (CanFight() && wantAttack)
             {
-                var r = Player.StartAttack();
+                string r;
+                if (RoomId == "arena" && !Boss.Dead && Boss.State == "staggered" && Player.CenterDist(Boss) < 130)
+                {
+                    r = Player.StartRiposte();
+                }
+                else
+                {
+                    r = Player.StartAttack();
+                }
                 _inputBuffer = (null, 0);
                 if (r != null)
                 {
@@ -252,6 +281,132 @@ public partial class MainGame : Node2D
                 }
             }
         }
+
+        ResolvePlayerAttackVsBoss();
+        ResolveRiposte();
+        ResolveBossAttacks();
+        if (RoomId == "arena" && Boss.Dead && Boss.StateTimer <= 0)
+        {
+            State = GameState.Victory;
+            Message(I18n.T("victory"), Palette.Yellow, 2.0f, Fonts.Big);
+        }
+    }
+
+    void ResolvePlayerAttackVsBoss()
+    {
+        if (RoomId != "arena" || Player.State != "attack" || Player.AttackLanded
+            || !Player.AttackActive() || Boss.Dead)
+        {
+            return;
+        }
+        var hb = Player.GetAttackHitbox();
+        if (hb.Intersects(Boss.Body, includeBorders: true))
+        {
+            Player.AttackLanded = true;
+            Boss.TakeDamage(Player.CurrentAttackDamage());
+            Particles.Spawn(hb.GetCenter(), Palette.RGB(255, 220, 120), 6, 3.0f, 0.3f);
+        }
+    }
+
+    void ResolveRiposte()
+    {
+        if (RoomId != "arena" || Player.State != "riposte" || Player.RiposteDone)
+        {
+            return;
+        }
+        if (S.RiposteTime - Player.StateTimer >= 0.25f)
+        {
+            Player.RiposteDone = true;
+            if (!Boss.Dead && Player.CenterDist(Boss) < 160)
+            {
+                Boss.TakeDamage(Player.AttackDamage() * 5);
+                Boss.State = "recover";
+                Boss.StateTimer = 0.8f;
+                SetShake(1.2f);
+                SetHitstop(S.HitstopRiposte);
+                Particles.Spawn(Boss.Position, Palette.RGB(255, 200, 60), 24, 5.0f, 0.6f);
+                Message(I18n.T("riposte_msg"), Palette.Yellow, 1.2f, Fonts.Big);
+            }
+        }
+    }
+
+    void ResolveBossAttacks()
+    {
+        if (RoomId != "arena" || Boss.State != "attack" || Boss.HitLanded)
+        {
+            return;
+        }
+        switch (Boss.AttackKind)
+        {
+            case "slash":
+            {
+                var hr = Boss.CurrentHitRect();
+                if (hr.HasValue && hr.Value.Intersects(Player.Body, includeBorders: true))
+                {
+                    Boss.HitLanded = true;
+                    if (Player.ParryWindowActive())
+                    {
+                        Boss.Stagger(2.5f);
+                        Player.Invuln = 0.5f;
+                        SetShake(0.6f);
+                        SetHitstop(S.HitstopParry);
+                        Particles.Spawn(Player.Position, Palette.RGB(255, 255, 255), 14, 4.0f, 0.4f);
+                        Message(I18n.T("parry_msg"), Palette.Yellow, 1.2f, Fonts.Big);
+                    }
+                    else if (Player.TakeDamage(S.SlashDamage, Boss.Dir))
+                    {
+                        OnPlayerHit();
+                    }
+                }
+                break;
+            }
+            case "charge":
+            {
+                var infl = Boss.Body.GrowIndividual(13, 8, 13, 8);
+                if (infl.Intersects(Player.Body, includeBorders: true))
+                {
+                    Boss.HitLanded = true;
+                    if (Player.TakeDamage(S.ChargeDamage, Boss.ChargeDir))
+                    {
+                        OnPlayerHit();
+                    }
+                }
+                break;
+            }
+            case "slam":
+                if (!Boss.SlamLanded)
+                {
+                    Boss.SlamLanded = true;
+                    SetShake(1.4f);
+                    SetHitstop(S.HitstopSlam);
+                    Particles.Spawn(new Vector2(Boss.Position.X, Boss.Body.End.Y),
+                        Palette.RGB(120, 90, 60), 26, 4.0f, 0.5f);
+                    if (Player.CenterDist(Boss) <= S.SlamRadius)
+                    {
+                        if (Player.TakeDamage(S.SlamDamage, Boss.Dir))
+                        {
+                            OnPlayerHit();
+                        }
+                    }
+                }
+                break;
+            case "blast":
+                if (!Boss.BlastLanded)
+                {
+                    Boss.BlastLanded = true;
+                    SetShake(1.6f);
+                    SetHitstop(S.HitstopSlam);
+                    Particles.Spawn(Boss.Position, Palette.RGB(255, 70, 60), 40, 6.0f, 0.6f);
+                    if (Player.CenterDist(Boss) <= S.BlastRadius)
+                    {
+                        if (Player.TakeDamage(S.BlastDamage, Boss.Dir))
+                        {
+                            OnPlayerHit();
+                        }
+                    }
+                }
+                break;
+        }
     }
 
     void UpdateDied(float dt)
@@ -261,17 +416,42 @@ public partial class MainGame : Node2D
         if (_deathTimer <= 0)
         {
             Player.Respawn();
+            Boss.Reset();
             EnterRoom("hub", RoomDb.Get("hub").PlayerSpawn);
             State = GameState.Play;
             _fade = 1f;
         }
     }
 
+    void UpdateVictory()
+    {
+        Particles.Update(1f / 60f);
+        if (Input.IsKeyPressed(Key.Enter))
+        {
+            Restart();
+        }
+        else if (Input.IsKeyPressed(Key.Escape))
+        {
+            GetTree().Quit();
+        }
+    }
+
+    void Restart()
+    {
+        Boss.Reset();
+        Player.Respawn();
+        _messages.Clear();
+        Particles.Clear();
+        EnterRoom("hub", RoomDb.Get("hub").PlayerSpawn);
+        State = GameState.Play;
+        _fade = 1f;
+    }
+
     bool CanFight() => RoomDef.Combat;
 
     bool CanRest()
     {
-        if (!RoomDef.BonfirePos.HasValue || Player.Dead)
+        if (!RoomDef.BonfirePos.HasValue || Player.Dead || (Boss.Aggro && !Boss.Dead))
         {
             return false;
         }
@@ -288,10 +468,18 @@ public partial class MainGame : Node2D
         {
             return false;
         }
-        Player.Hp = Player.MaxHp();
-        Player.Estus = S.EstusMax;
-        _fade = 1f;
-        Message(I18n.T("game_saved"), Palette.Orange, 1.6f, Fonts.Big);
+        if (Boss.Aggro && !Boss.Dead)
+        {
+            Message(I18n.T("cannot_rest"), Palette.Red, 1.4f, Fonts.Big);
+        }
+        else
+        {
+            Player.Hp = Player.MaxHp();
+            Player.Estus = S.EstusMax;
+            Boss.Reset();
+            _fade = 1f;
+            Message(I18n.T("game_saved"), Palette.Orange, 1.6f, Fonts.Big);
+        }
         return true;
     }
 
@@ -308,7 +496,7 @@ public partial class MainGame : Node2D
             {
                 continue;
             }
-            if (conn.Sealed == "boss_alive" && !_bossDefeated)
+            if (conn.Sealed == "boss_alive" && !Boss.Dead)
             {
                 continue;
             }
@@ -329,6 +517,7 @@ public partial class MainGame : Node2D
         RoomDef = room;
         _floorSprite.Texture = GetFloor(roomId);
         Player.WorldBounds = room.Size;
+        Boss.WorldBounds = room.Size;
         Player.Position = spawn;
         _connCooldown = 0.4f;
         SnapCamera();
@@ -475,12 +664,7 @@ public partial class MainGame : Node2D
 
     public static string KeyName(Key key) => key.ToString().ToUpper();
 
-    bool _bossDefeated => false; // Stage B: Boss 死亡状态
-
-    void ResetBoss()
-    {
-        // Stage B: Boss.Reset()
-    }
+    void ResetBoss() => Boss.Reset();
 
     public override void _Draw()
     {
@@ -493,7 +677,7 @@ public partial class MainGame : Node2D
         {
             if (conn.Kind == "fog")
             {
-                bool isSealed = conn.Sealed == "boss_alive" && !_bossDefeated;
+                bool isSealed = conn.Sealed == "boss_alive" && !Boss.Dead;
                 DrawFogGate(conn.Rect, isSealed);
             }
             else
@@ -546,7 +730,7 @@ public partial class MainGame : Node2D
             {
                 continue;
             }
-            if (conn.Sealed == "boss_alive" && !_bossDefeated)
+            if (conn.Sealed == "boss_alive" && !Boss.Dead)
             {
                 continue;
             }
@@ -577,6 +761,10 @@ public partial class MainGame : Node2D
             {
                 DrawHubBanner(c);
             }
+            else
+            {
+                DrawBossBanner(c);
+            }
             DrawMessages(c);
             if (ShowKeys > 0)
             {
@@ -589,11 +777,25 @@ public partial class MainGame : Node2D
             c.DrawString(Fonts.Title, new Vector2(S.Width / 2f, 250), "YOU DIED",
                 HorizontalAlignment.Center, -1, Fonts.Huge, Palette.RGB(190, 20, 20, (int)(255 * a)));
         }
+        if (State == GameState.Victory)
+        {
+            DrawVictory(c);
+        }
         if (_fade > 0)
         {
             c.DrawRect(new Rect2(0, 0, S.Width, S.Height),
                 Palette.RGB(0, 0, 0, (int)(255 * Mathf.Min(1, _fade))));
         }
+    }
+
+    void DrawVictory(CanvasItem c)
+    {
+        c.DrawString(Fonts.Title, new Vector2(S.Width / 2f, 280), I18n.T("victory"),
+            HorizontalAlignment.Center, -1, Fonts.Huge, Palette.Yellow);
+        c.DrawString(Fonts.Pick(I18n.T("restart")), new Vector2(S.Width / 2f, 380), I18n.T("restart"),
+            HorizontalAlignment.Center, -1, Fonts.Big, Palette.White);
+        c.DrawString(Fonts.Pick(I18n.T("esc_main_menu")), new Vector2(S.Width / 2f, 440), I18n.T("esc_main_menu"),
+            HorizontalAlignment.Center, -1, Fonts.Small, Palette.Gray);
     }
 
     void DrawHud(CanvasItem c)
@@ -610,6 +812,16 @@ public partial class MainGame : Node2D
         }
         c.DrawString(Fonts.Body, new Vector2(30, 116), $"{I18n.T("souls")} {Player.Souls}",
             HorizontalAlignment.Left, -1, Fonts.Small, Palette.RGB(235, 210, 120));
+        if (RoomId == "arena" && Boss.Aggro && !Boss.Dead)
+        {
+            int w = 840;
+            float x = (S.Width - w) / 2f;
+            float y = S.Height - 58;
+            c.DrawString(Fonts.Pick(I18n.T("boss_name")), new Vector2(x, y - 8), I18n.T("boss_name"),
+                HorizontalAlignment.Left, -1, Fonts.Normal, Palette.White);
+            DrawBar(c, (int)x, (int)y, w, 18, Boss.Hp / (float)Boss.MaxHp,
+                Palette.RGB(150, 20, 20), Palette.RGB(60, 10, 10));
+        }
     }
 
     static void DrawBar(CanvasItem c, int x, int y, int w, int h, float frac, Color color, Color bg)
@@ -638,6 +850,20 @@ public partial class MainGame : Node2D
         c.DrawString(Fonts.Pick(I18n.T(_roomBannerKey ?? "firelink")),
             new Vector2(S.Width / 2f, 190), I18n.T(_roomBannerKey ?? "firelink"),
             HorizontalAlignment.Center, -1, Fonts.Big, Palette.RGB(200, 200, 210, alpha));
+    }
+
+    void DrawBossBanner(CanvasItem c)
+    {
+        float bt = Boss.AggroBanner;
+        if (bt <= 0)
+        {
+            return;
+        }
+        float fadeIn = Mathf.Min(1, (2.4f - bt) / 0.4f);
+        float fadeOut = Mathf.Min(1, bt / 0.5f);
+        int alpha = (int)(255 * Mathf.Min(fadeIn, fadeOut));
+        c.DrawString(Fonts.Title, new Vector2(S.Width / 2f, 190), I18n.T("boss_name"),
+            HorizontalAlignment.Center, -1, Fonts.Huge, Palette.RGB(220, 60, 40, alpha));
     }
 
     void DrawMessages(CanvasItem c)
