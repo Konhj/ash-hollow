@@ -1632,8 +1632,7 @@ public partial class MainGame : Node2D
         var rect = new Rect2(pos.X - w / 2, pos.Y - h / 2, w, h);
         c.DrawRect(rect, Palette.RGB(14, 14, 18));
         c.DrawRect(rect, Palette.RGB(200, 200, 210), false, 2);
-        c.DrawString(Fonts.Pick(key), pos + new Vector2(0, 7), key,
-            HorizontalAlignment.Center, -1, Fonts.Small, Palette.RGB(235, 235, 240));
+        TextDraw.Center(c, Fonts.Pick(key), pos, key, Fonts.Small, Palette.RGB(235, 235, 240));
     }
 
     // ---------------------------------------------------------------- UI 绘制
@@ -1660,8 +1659,8 @@ public partial class MainGame : Node2D
         if (State == GameState.Died)
         {
             float a = Mathf.Max(0, Mathf.Min(1, (2.4f - _deathTimer) / 0.6f));
-            c.DrawString(Fonts.Title, new Vector2(S.Width / 2f, 250), "YOU DIED",
-                HorizontalAlignment.Center, -1, Fonts.Huge, Palette.RGB(190, 20, 20, (int)(255 * a)));
+            TextDraw.Center(c, Fonts.Title, new Vector2(S.Width / 2f, 250), "YOU DIED",
+                Fonts.Huge, Palette.RGB(190, 20, 20, (int)(255 * a)));
         }
         if (State == GameState.Victory)
         {
@@ -1681,9 +1680,8 @@ public partial class MainGame : Node2D
                 string vtext = $"v{S.Version}";
                 var vsize = Fonts.Body.GetStringSize(vtext, HorizontalAlignment.Left, -1, Fonts.Small);
                 _versionRect = new Rect2(12, S.Height - 28, vsize.X + 8, vsize.Y + 4);
-                c.DrawString(Fonts.Body, new Vector2(12, S.Height - 28), vtext,
-                    HorizontalAlignment.Left, -1, Fonts.Small,
-                    hover ? Palette.Yellow : Palette.RGB(110, 110, 120));
+                TextDraw.Left(c, Fonts.Body, new Vector2(12, S.Height - 28), vtext,
+                    Fonts.Small, hover ? Palette.Yellow : Palette.RGB(110, 110, 120));
             }
         }
         if (State == GameState.Pause)
@@ -1704,18 +1702,18 @@ public partial class MainGame : Node2D
 
     void DrawVictory(CanvasItem c)
     {
-        c.DrawString(Fonts.Title, new Vector2(S.Width / 2f, 280), I18n.T("victory"),
-            HorizontalAlignment.Center, -1, Fonts.Huge, Palette.Yellow);
-        c.DrawString(Fonts.Pick(I18n.T("restart")), new Vector2(S.Width / 2f, 380), I18n.T("restart"),
-            HorizontalAlignment.Center, -1, Fonts.Big, Palette.White);
-        c.DrawString(Fonts.Pick(I18n.T("esc_main_menu")), new Vector2(S.Width / 2f, 440), I18n.T("esc_main_menu"),
-            HorizontalAlignment.Center, -1, Fonts.Small, Palette.Gray);
+        TextDraw.Center(c, Fonts.Title, new Vector2(S.Width / 2f, 280), I18n.T("victory"),
+            Fonts.Huge, Palette.Yellow);
+        TextDraw.Center(c, Fonts.Pick(I18n.T("restart")), new Vector2(S.Width / 2f, 380), I18n.T("restart"),
+            Fonts.Big, Palette.White);
+        TextDraw.Center(c, Fonts.Pick(I18n.T("esc_main_menu")), new Vector2(S.Width / 2f, 440), I18n.T("esc_main_menu"),
+            Fonts.Small, Palette.Gray);
     }
 
     void DrawHud(CanvasItem c)
     {
-        c.DrawString(Fonts.Body, new Vector2(30, 8), I18n.T("unkindled"),
-            HorizontalAlignment.Left, -1, Fonts.Small, Palette.Gray);
+        TextDraw.Left(c, Fonts.Body, new Vector2(30, 8), I18n.T("unkindled"),
+            Fonts.Small, Palette.Gray);
         int wHp = (int)(260 * (Player.MaxHp() / (float)S.PlayerMaxHp));
         int wSt = (int)(220 * (Player.MaxStamina() / (float)S.PlayerMaxStamina));
         DrawBar(c, 30, 36, wHp, 16, Player.Hp / (float)Player.MaxHp(), Palette.Red, Palette.DarkRed);
@@ -1724,15 +1722,15 @@ public partial class MainGame : Node2D
         {
             DrawFlask(c, 30 + i * 32, 84, i < Player.Estus);
         }
-        c.DrawString(Fonts.Body, new Vector2(30, 116), $"{I18n.T("souls")} {Player.Souls}",
-            HorizontalAlignment.Left, -1, Fonts.Small, Palette.RGB(235, 210, 120));
+        TextDraw.Left(c, Fonts.Body, new Vector2(30, 116), $"{I18n.T("souls")} {Player.Souls}",
+            Fonts.Small, Palette.RGB(235, 210, 120));
         if (RoomId == "arena" && Boss.Aggro && !Boss.Dead)
         {
             int w = 840;
             float x = (S.Width - w) / 2f;
             float y = S.Height - 58;
-            c.DrawString(Fonts.Pick(I18n.T("boss_name")), new Vector2(x, y - 8), I18n.T("boss_name"),
-                HorizontalAlignment.Left, -1, Fonts.Normal, Palette.White);
+            TextDraw.LeftBottom(c, Fonts.Pick(I18n.T("boss_name")), new Vector2(x, y - 8), I18n.T("boss_name"),
+                Fonts.Normal, Palette.White);
             DrawBar(c, (int)x, (int)y, w, 18, Boss.Hp / (float)Boss.MaxHp,
                 Palette.RGB(150, 20, 20), Palette.RGB(60, 10, 10));
         }
@@ -1761,9 +1759,9 @@ public partial class MainGame : Node2D
         float fadeIn = Mathf.Min(1, (2.6f - _hubBanner) / 0.4f);
         float fadeOut = Mathf.Min(1, _hubBanner / 0.5f);
         int alpha = (int)(255 * Mathf.Min(fadeIn, fadeOut));
-        c.DrawString(Fonts.Pick(I18n.T(_roomBannerKey ?? "firelink")),
+        TextDraw.Center(c, Fonts.Pick(I18n.T(_roomBannerKey ?? "firelink")),
             new Vector2(S.Width / 2f, 190), I18n.T(_roomBannerKey ?? "firelink"),
-            HorizontalAlignment.Center, -1, Fonts.Big, Palette.RGB(200, 200, 210, alpha));
+            Fonts.Big, Palette.RGB(200, 200, 210, alpha));
     }
 
     void DrawBossBanner(CanvasItem c)
@@ -1776,8 +1774,8 @@ public partial class MainGame : Node2D
         float fadeIn = Mathf.Min(1, (2.4f - bt) / 0.4f);
         float fadeOut = Mathf.Min(1, bt / 0.5f);
         int alpha = (int)(255 * Mathf.Min(fadeIn, fadeOut));
-        c.DrawString(Fonts.Title, new Vector2(S.Width / 2f, 190), I18n.T("boss_name"),
-            HorizontalAlignment.Center, -1, Fonts.Huge, Palette.RGB(220, 60, 40, alpha));
+        TextDraw.Center(c, Fonts.Title, new Vector2(S.Width / 2f, 190), I18n.T("boss_name"),
+            Fonts.Huge, Palette.RGB(220, 60, 40, alpha));
     }
 
     void DrawMessages(CanvasItem c)
@@ -1787,8 +1785,8 @@ public partial class MainGame : Node2D
         {
             int alpha = m.Time > 0.3f ? 255 : (int)(255 * m.Time / 0.3f);
             var col = new Color(m.Color.R, m.Color.G, m.Color.B, alpha / 255f);
-            c.DrawString(Fonts.Pick(m.Text), new Vector2(S.Width / 2f, y), m.Text,
-                HorizontalAlignment.Center, -1, m.Size, col);
+            TextDraw.Center(c, Fonts.Pick(m.Text), new Vector2(S.Width / 2f, y), m.Text,
+                m.Size, col);
             y += 36;
         }
     }
@@ -1817,8 +1815,8 @@ public partial class MainGame : Node2D
         float y = 20;
         foreach (var line in lines)
         {
-            c.DrawString(Fonts.Pick(line), new Vector2(panel.Position.X + 6, y), line,
-                HorizontalAlignment.Left, -1, Fonts.Small, Palette.RGB(195, 195, 205));
+            TextDraw.Left(c, Fonts.Pick(line), new Vector2(panel.Position.X + 6, y), line,
+                Fonts.Small, Palette.RGB(195, 195, 205));
             y += 22;
         }
     }
@@ -1828,8 +1826,8 @@ public partial class MainGame : Node2D
         var f = Fonts.Zh;
         if (_clMode == "list")
         {
-            c.DrawString(f, new Vector2(S.Width / 2f, 110), I18n.T("changelog"),
-                HorizontalAlignment.Center, -1, Fonts.Big, Palette.RGB(220, 220, 228));
+            TextDraw.Center(c, f, new Vector2(S.Width / 2f, 110), I18n.T("changelog"),
+                Fonts.Big, Palette.RGB(220, 220, 228));
             var vers = ChangelogVersions();
             float maxScroll = Mathf.Max(0, vers.Count * 48 - 440);
             _clScroll = Mathf.Clamp(_clScroll, 0, maxScroll);
@@ -1844,19 +1842,19 @@ public partial class MainGame : Node2D
                 var rect = new Rect2(S.Width / 2f - size.X / 2f, y - size.Y / 2f, size.X, size.Y);
                 if (y > 120 && y < 650)
                 {
-                    c.DrawString(f, new Vector2(S.Width / 2f, y), label,
-                        HorizontalAlignment.Center, -1, Fonts.Normal, color);
+                    TextDraw.Center(c, f, new Vector2(S.Width / 2f, y), label,
+                        Fonts.Normal, color);
                 }
                 _clRects.Add(rect.GrowIndividual(20, 8, 20, 8));
                 y += 48;
             }
-            c.DrawString(f, new Vector2(S.Width / 2f, 690), $"ESC  {I18n.T("back")}",
-                HorizontalAlignment.Center, -1, Fonts.Small, Palette.RGB(110, 110, 120));
+            TextDraw.Center(c, f, new Vector2(S.Width / 2f, 690), $"ESC  {I18n.T("back")}",
+                Fonts.Small, Palette.RGB(110, 110, 120));
         }
         else
         {
-            c.DrawString(f, new Vector2(S.Width / 2f, 110), $"v{_clVer}",
-                HorizontalAlignment.Center, -1, Fonts.Big, Palette.Yellow);
+            TextDraw.Center(c, f, new Vector2(S.Width / 2f, 110), $"v{_clVer}",
+                Fonts.Big, Palette.Yellow);
             float maxScroll = Mathf.Max(0, _clLines.Count * 36 - 500);
             _clScroll = Mathf.Clamp(_clScroll, 0, maxScroll);
             float y = 180 - _clScroll;
@@ -1864,13 +1862,13 @@ public partial class MainGame : Node2D
             {
                 if (y > 120 && y < 650)
                 {
-                    c.DrawString(f, new Vector2(S.Width / 2f - 420, y), line,
-                        HorizontalAlignment.Left, -1, Fonts.Normal, Palette.RGB(205, 205, 213));
+                    TextDraw.Left(c, f, new Vector2(S.Width / 2f - 420, y), line,
+                        Fonts.Normal, Palette.RGB(205, 205, 213));
                 }
                 y += 36;
             }
-            c.DrawString(f, new Vector2(S.Width / 2f, 690), $"ESC  {I18n.T("back")}",
-                HorizontalAlignment.Center, -1, Fonts.Small, Palette.RGB(110, 110, 120));
+            TextDraw.Center(c, f, new Vector2(S.Width / 2f, 690), $"ESC  {I18n.T("back")}",
+                Fonts.Small, Palette.RGB(110, 110, 120));
         }
     }
 
@@ -1881,8 +1879,8 @@ public partial class MainGame : Node2D
 
         c.DrawRect(new Rect2(30, 40, 400, 640), Palette.RGB(22, 22, 30, 225));
         c.DrawRect(new Rect2(30, 40, 400, 640), Palette.RGB(90, 90, 100), false, 2);
-        c.DrawString(Fonts.Pick(I18n.T("inventory")), new Vector2(230, 70), I18n.T("inventory"),
-            HorizontalAlignment.Center, -1, Fonts.Normal, Palette.RGB(220, 220, 228));
+        TextDraw.Center(c, Fonts.Pick(I18n.T("inventory")), new Vector2(230, 70), I18n.T("inventory"),
+            Fonts.Normal, Palette.RGB(220, 220, 228));
 
         DrawCharacterModel(c, 230, 165);
         string eqName = p.Equipment["mainhand"] != null
@@ -1916,8 +1914,8 @@ public partial class MainGame : Node2D
             {
                 c.DrawRect(rect, Palette.RGB(110, 110, 122), false, 2);
             }
-            c.DrawString(Fonts.Pick(label), new Vector2(cx, cy - 36), label,
-                HorizontalAlignment.Center, -1, Fonts.Small, Palette.RGB(150, 150, 160));
+            TextDraw.Center(c, Fonts.Pick(label), new Vector2(cx, cy - 36), label,
+                Fonts.Small, Palette.RGB(150, 150, 160));
             string itemId = p.Equipment[key];
             if (itemId != null)
             {
@@ -1926,16 +1924,16 @@ public partial class MainGame : Node2D
             }
             else
             {
-                c.DrawString(Fonts.Body, new Vector2(cx, cy + 8), "-",
-                    HorizontalAlignment.Center, -1, Fonts.Normal, Palette.RGB(90, 90, 98));
+                TextDraw.Center(c, Fonts.Body, new Vector2(cx, cy + 8), "-",
+                    Fonts.Normal, Palette.RGB(90, 90, 98));
             }
             _invEquipCells.Add((rect, key, itemId));
         }
 
         if (_invSelectedSlot != null)
         {
-            c.DrawString(Fonts.Pick(I18n.T("select_item_hint")), new Vector2(230, 660), I18n.T("select_item_hint"),
-                HorizontalAlignment.Center, -1, Fonts.Small, Palette.Yellow);
+            TextDraw.Center(c, Fonts.Pick(I18n.T("select_item_hint")), new Vector2(230, 660), I18n.T("select_item_hint"),
+                Fonts.Small, Palette.Yellow);
         }
 
         c.DrawRect(new Rect2(460, 40, 790, 640), Palette.RGB(22, 22, 30, 225));
@@ -1952,8 +1950,8 @@ public partial class MainGame : Node2D
             bool sel = i == _invTab;
             c.DrawRect(rect, sel ? Palette.RGB(60, 60, 74) : Palette.RGB(35, 35, 44));
             c.DrawRect(rect, sel ? Palette.Yellow : Palette.RGB(110, 110, 122), false, 2);
-            c.DrawString(Fonts.Pick(tabs[i]), rect.GetCenter(), tabs[i],
-                HorizontalAlignment.Center, -1, Fonts.Small, sel ? Palette.Yellow : Palette.RGB(200, 200, 210));
+            TextDraw.Center(c, Fonts.Pick(tabs[i]), rect.GetCenter(), tabs[i],
+                Fonts.Small, sel ? Palette.Yellow : Palette.RGB(200, 200, 210));
             _invTabRects.Add(rect);
         }
 
@@ -2047,18 +2045,15 @@ public partial class MainGame : Node2D
                 continue;
             }
             Color color = i == 0 ? Palette.Yellow : Palette.RGB(205, 205, 213);
-            c.DrawString(Fonts.Pick(lines[i]), new Vector2(tx + pad, y), lines[i],
-                HorizontalAlignment.Left, -1, Fonts.Small, color);
+            TextDraw.Left(c, Fonts.Pick(lines[i]), new Vector2(tx + pad, y), lines[i],
+                Fonts.Small, color);
             y += 24;
         }
     }
 
     void DrawFitText(CanvasItem c, string text, float cx, float cy, float maxW, int fontSize, Color color)
     {
-        var font = Fonts.Pick(text);
-        float w = font.GetStringSize(text, HorizontalAlignment.Left, -1, fontSize).X;
-        int size = w > maxW ? Mathf.Max(8, (int)(fontSize * maxW / w)) : fontSize;
-        c.DrawString(font, new Vector2(cx, cy), text, HorizontalAlignment.Center, -1, size, color);
+        TextDraw.FitCenter(c, Fonts.Pick(text), new Vector2(cx, cy), text, maxW, fontSize, color);
     }
 
     void DrawItemIcon(CanvasItem c, string itemId, float cx, float cy)

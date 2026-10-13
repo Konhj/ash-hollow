@@ -200,17 +200,16 @@ public class Menu
         if (!string.IsNullOrEmpty(Title))
         {
             var font = TitleFont && titleFont != null ? titleFont : Fonts.Pick(Title);
-            c.DrawString(font, new Vector2(S.Width / 2f, 150), Title,
-                HorizontalAlignment.Center, -1, TitleFont ? Fonts.TitleSize : Fonts.Big,
-                Palette.RGB(220, 220, 228));
+            TextDraw.Center(c, font, new Vector2(S.Width / 2f, 150), Title,
+                TitleFont ? Fonts.TitleSize : Fonts.Big, Palette.RGB(220, 220, 228));
         }
         if (Warning != null)
         {
             var wtext = Warning();
             if (!string.IsNullOrEmpty(wtext))
             {
-                c.DrawString(Fonts.Pick(wtext), new Vector2(S.Width / 2f, 240), wtext,
-                    HorizontalAlignment.Center, -1, Fonts.Normal, Palette.RGB(235, 170, 80));
+                TextDraw.Center(c, Fonts.Pick(wtext), new Vector2(S.Width / 2f, 240), wtext,
+                    Fonts.Normal, Palette.RGB(235, 170, 80));
             }
         }
         var visible = VisibleIndices();
@@ -249,25 +248,24 @@ public class Menu
                 label = "> " + label + " <";
             }
             var font = Fonts.Pick(label);
-            var size = font.GetStringSize(label, HorizontalAlignment.Left, -1,
-                Columns == 2 ? Fonts.Normal : Fonts.Big);
+            int itemSize = Columns == 2 ? Fonts.Normal : Fonts.Big;
+            var size = font.GetStringSize(label, HorizontalAlignment.Left, -1, itemSize);
             var rect = new Rect2(x - size.X / 2f - 20, y - size.Y / 2f, size.X + 40, size.Y);
-            c.DrawString(font, new Vector2(x, y), label, HorizontalAlignment.Center, -1,
-                Columns == 2 ? Fonts.Normal : Fonts.Big, color);
+            TextDraw.Center(c, font, new Vector2(x, y), label, itemSize, color);
             HitRects.Add(rect.GrowIndividual(20, 9, 20, 9));
         }
         if (Capture != null)
         {
-            c.DrawString(Fonts.Body, new Vector2(S.Width - 24, S.Height - 18), I18n.T("press_any_key"),
-                HorizontalAlignment.Right, -1, Fonts.Small, Palette.Yellow);
+            TextDraw.RightBottom(c, Fonts.Body, new Vector2(S.Width - 24, S.Height - 18),
+                I18n.T("press_any_key"), Fonts.Small, Palette.Yellow);
         }
         if (Hint != null)
         {
             var (text, color) = Hint();
             if (!string.IsNullOrEmpty(text))
             {
-                c.DrawString(Fonts.Pick(text), new Vector2(S.Width / 2f, 692), text,
-                    HorizontalAlignment.Center, -1, Fonts.Small, color);
+                TextDraw.Center(c, Fonts.Pick(text), new Vector2(S.Width / 2f, 692), text,
+                    Fonts.Small, color);
             }
         }
     }
