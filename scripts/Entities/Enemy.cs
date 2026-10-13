@@ -307,7 +307,7 @@ public partial class Enemy : Entity
         }
         float fx = Dir.X;
         float fy = Dir.Y;
-        var off = Position + new Vector2(-40, -43);
+        var off = new Vector2(-40, -43);
 
         Color body = Flash > 0 ? Palette.RGB(220, 210, 210) : EnemyDb.Color(Data);
         if (State == "windup")

@@ -11,6 +11,7 @@ public partial class Bonfire : Node2D
     public void Update(float dt)
     {
         T += dt;
+        QueueRedraw();
     }
 
     public bool InRange(Vector2 center) => center.DistanceSquaredTo(Position) <= Radius * Radius;

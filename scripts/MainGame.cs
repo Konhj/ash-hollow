@@ -161,6 +161,13 @@ public partial class MainGame : Node2D
             }
         }
 
+        Player?.QueueRedraw();
+        Boss?.QueueRedraw();
+        foreach (var e in _enemies)
+        {
+            e.QueueRedraw();
+        }
+
         QueueRedraw();
         _fx.QueueRedraw();
         _ui.QueueRedraw();

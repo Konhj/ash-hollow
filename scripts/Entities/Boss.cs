@@ -296,7 +296,7 @@ public partial class Boss : Entity
 
         if (dyOff < -20)
         {
-            DrawSetTransform(new Vector2(Position.X, Position.Y + 55 + dyOff), 0, new Vector2(1, 20f / 90f));
+            DrawSetTransform(new Vector2(0, 55 + dyOff), 0, new Vector2(1, 20f / 90f));
             DrawCircle(Vector2.Zero, 45, Palette.RGB(0, 0, 0, 120));
             DrawSetTransform(Vector2.Zero);
         }
@@ -304,19 +304,19 @@ public partial class Boss : Entity
         if (State == "attack" && AttackKind == "slam")
         {
             float p = 1 - Mathf.Max(0, StateTimer) / Duration["slam"];
-            DrawCircle(new Vector2(Position.X, Position.Y + 55 + dyOff), 20 + 160 * p,
+            DrawCircle(new Vector2(0, 55 + dyOff), 20 + 160 * p,
                 Palette.RGB(240, 150, 60, (int)(150 * (1 - p))), false, 6);
         }
         if (State == "attack" && AttackKind == "blast")
         {
             float p = 1 - Mathf.Max(0, StateTimer) / Duration["blast"];
-            DrawCircle(Position + new Vector2(0, dyOff), 30 + S.BlastRadius * p,
+            DrawCircle(new Vector2(0, dyOff), 30 + S.BlastRadius * p,
                 Palette.RGB(255, 70, 60, (int)(200 * (1 - p))), false, 10);
-            DrawCircle(Position + new Vector2(0, dyOff), Mathf.Max(8, 30 + S.BlastRadius * p - 24),
+            DrawCircle(new Vector2(0, dyOff), Mathf.Max(8, 30 + S.BlastRadius * p - 24),
                 Palette.RGB(255, 140, 120, (int)(120 * (1 - p))), false, 4);
         }
 
-        var off = Position + new Vector2(-80, -61 + dyOff);
+        var off = new Vector2(-80, -61 + dyOff);
 
         if (State == "staggered")
         {
@@ -367,7 +367,7 @@ public partial class Boss : Entity
     {
         float ang = Mathf.Atan2(Dir.Y, Dir.X);
         float frac = (Duration["slash"] - Mathf.Max(0, StateTimer)) / Duration["slash"];
-        DrawSetTransform(Position, ang);
+        DrawSetTransform(Vector2.Zero, ang);
         float[] offs = { 0f, -0.15f, -0.3f };
         for (int i = 0; i < offs.Length; i++)
         {
