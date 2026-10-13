@@ -75,6 +75,7 @@ public partial class MainGame : Node2D
     readonly Dictionary<Key, bool> _prevKeys = new();
     bool _mouseDown;
     bool _mouseRightDown;
+    float _wheelAccum;
 
     public override void _Ready()
     {
@@ -177,6 +178,11 @@ public partial class MainGame : Node2D
 
     public override void _UnhandledInput(InputEvent e)
     {
+        if (e is InputEventMouseButton mb && mb.Pressed
+            && (mb.ButtonIndex == MouseButton.WheelUp || mb.ButtonIndex == MouseButton.WheelDown))
+        {
+            _wheelAccum += mb.ButtonIndex == MouseButton.WheelUp ? -1 : 1;
+        }
         if (_menu.Capture != null && e is InputEventKey keyEv && keyEv.Pressed && !keyEv.Echo)
         {
             if (keyEv.Keycode != Key.Escape)
@@ -273,12 +279,23 @@ public partial class MainGame : Node2D
             OpenChangelog();
             return;
         }
+        if (MouseRightClicked() && _menu.Capture == null)
+        {
+            OnEscape();
+            return;
+        }
         _menu.Update(JustKey, MousePos, clicked);
     }
 
     void UpdatePause()
     {
-        _menu.Update(JustKey, MousePos, MouseClicked());
+        bool clicked = MouseClicked();
+        if (MouseRightClicked() && _menu.Capture == null)
+        {
+            OnEscape();
+            return;
+        }
+        _menu.Update(JustKey, MousePos, clicked);
         MouseClicked();
     }
 
@@ -596,6 +613,11 @@ public partial class MainGame : Node2D
     {
         var mp = MousePos;
         bool clicked = MouseClicked();
+        if (_wheelAccum != 0)
+        {
+            _clScroll -= _wheelAccum * 64;
+            _wheelAccum = 0;
+        }
         if (_clMode == "list")
         {
             var vers = ChangelogVersions();

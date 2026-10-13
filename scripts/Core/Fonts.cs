@@ -20,9 +20,23 @@ public static class Fonts
 
     public static void Load()
     {
-        Title = LoadFile("res://assets/fonts/cinzel.ttf");
+        Title = LoadAny("res://assets/fonts/agmena.ttf", "res://assets/fonts/agmena.otf", "res://assets/fonts/cinzel.ttf");
         Body = LoadFile("res://assets/fonts/eb-garamond.ttf");
         Zh = LoadFile("res://assets/fonts/noto-serif-sc.ttf");
+    }
+
+    /// <summary>标题字体优先链:agmena.ttf → agmena.otf → cinzel.ttf(用户将来提供 agmena 即自动生效)。</summary>
+    private static Font LoadAny(params string[] paths)
+    {
+        foreach (var path in paths)
+        {
+            var f = LoadQuiet(path);
+            if (f != null)
+            {
+                return f;
+            }
+        }
+        return null;
     }
 
     private static Font LoadFile(string path)
@@ -35,6 +49,16 @@ public static class Fonts
             return null;
         }
         return f;
+    }
+
+    private static Font LoadQuiet(string path)
+    {
+        if (!FileAccess.FileExists(path))
+        {
+            return null;
+        }
+        var f = new FontFile();
+        return f.LoadDynamicFont(path) == Error.Ok ? f : null;
     }
 
     /// <summary>含 CJK 字符用中文字体,否则用英文正文字体。</summary>
