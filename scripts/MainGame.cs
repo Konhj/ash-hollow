@@ -265,6 +265,11 @@ public partial class MainGame : Node2D
 
     void UpdateMainMenu()
     {
+        if (MouseRightClicked() && _menu.Capture == null)
+        {
+            OnEscape();
+            return;
+        }
         if (_clMode != null)
         {
             UpdateChangelog();
@@ -274,11 +279,6 @@ public partial class MainGame : Node2D
         if (clicked && _versionRect.HasPoint(MousePos))
         {
             OpenChangelog();
-            return;
-        }
-        if (MouseRightClicked() && _menu.Capture == null)
-        {
-            OnEscape();
             return;
         }
         _menu.Update(JustKey, MousePos, clicked);
