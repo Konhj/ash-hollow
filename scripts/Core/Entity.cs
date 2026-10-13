@@ -27,14 +27,16 @@ public partial class Entity : CharacterBody2D
         CollisionMask = LayerTerrain | LayerEntities;
     }
 
-    /// <summary>为实体添加矩形碰撞体(与逻辑 Size 一致)。</summary>
+    /// <summary>更新/创建实体矩形碰撞体(场景中已有时更新,否则创建)。</summary>
     protected void SetCollisionShape(Vector2 size)
     {
-        var shape = new CollisionShape2D
+        var cs = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+        if (cs == null)
         {
-            Shape = new RectangleShape2D { Size = size },
-        };
-        AddChild(shape);
+            cs = new CollisionShape2D { Name = "CollisionShape2D" };
+            AddChild(cs);
+        }
+        cs.Shape = new RectangleShape2D { Size = size };
     }
 
     /// <summary>死亡后不再阻挡他人(对应旧 pygame:尸体从碰撞列表剔除)。</summary>

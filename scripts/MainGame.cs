@@ -14,13 +14,16 @@ public partial class MainGame : Node2D
 
     public GameState State = GameState.MainMenu;
 
+    public static MainGame Game { get; private set; }
+
     public string RoomId;
-    public RoomDef RoomDef;
+    public RoomRoot Room;
     public Player Player;
     public Boss Boss;
-    public Bonfire Bonfire;
     public readonly Particles Particles = new();
     public readonly HashSet<(string room, int index)> KilledEnemies = new();
+
+    public bool BossDefeated => Boss != null && Boss.Dead;
 
     float _time;
     float _fade = 1f;
@@ -47,7 +50,7 @@ public partial class MainGame : Node2D
     readonly List<Msg> _messages = new();
 
     Sprite2D _floorSprite;
-    Node2D _terrainNode;
+    Node2D _roomNode;
     Camera2D _camera;
     CanvasLayer _uiLayer;
     UiOverlay _ui;
@@ -56,6 +59,16 @@ public partial class MainGame : Node2D
     readonly List<Enemy> _enemies = new();
     readonly List<Projectile> _projectiles = new();
     readonly Dictionary<string, ImageTexture> _floorCache = new();
+
+    static readonly PackedScene PlayerScene = GD.Load<PackedScene>("res://scenes/entities/Player.tscn");
+    static readonly PackedScene BossScene = GD.Load<PackedScene>("res://scenes/entities/Boss.tscn");
+    static readonly PackedScene EnemyScene = GD.Load<PackedScene>("res://scenes/entities/Enemy.tscn");
+    static readonly Dictionary<string, string> RoomScenePaths = new()
+    {
+        { "hub", "res://scenes/rooms/Hub.tscn" },
+        { "arena", "res://scenes/rooms/Arena.tscn" },
+        { "outpost", "res://scenes/rooms/Outpost.tscn" },
+    };
 
     readonly Menu _menu = new();
     string _clMode;
@@ -80,12 +93,12 @@ public partial class MainGame : Node2D
 
     public override void _Ready()
     {
+        Game = this;
         DataTables.LoadAll();
         S.Init();
         Palette.Init();
         Fonts.Load();
         ItemsDb.Load();
-        RoomDb.Load();
         EnemyDb.Load();
         Config.Load();
         I18n.SetLang(Config.Language);
@@ -94,30 +107,30 @@ public partial class MainGame : Node2D
         _floorSprite = new Sprite2D { Centered = false };
         AddChild(_floorSprite);
 
-        Bonfire = new Bonfire();
-        AddChild(Bonfire);
-
-        Boss = new Boss();
+        Boss = BossScene.Instantiate<Boss>();
         AddChild(Boss);
-        Boss.Position = new Vector2(1080, 400);
+        Boss.ZIndex = 10;
         Boss.Reset();
 
         _enemiesLayer = new Node2D();
         AddChild(_enemiesLayer);
+        _enemiesLayer.ZIndex = 20;
 
         var projLayer = new ProjLayer(this);
         AddChild(projLayer);
+        projLayer.ZIndex = 30;
 
-        Player = new Player();
+        Player = PlayerScene.Instantiate<Player>();
         Player.Inventory.AddRange(ItemsDb.DefaultInventory);
         foreach (var kv in ItemsDb.DefaultEquipment)
         {
             Player.Equipment[kv.Key] = kv.Value;
         }
         AddChild(Player);
+        Player.ZIndex = 40;
 
         _fx = new FxLayer(this);
-        _fx.ZIndex = 10;
+        _fx.ZIndex = 50;
         AddChild(_fx);
 
         _camera = new Camera2D();
@@ -129,7 +142,7 @@ public partial class MainGame : Node2D
         _ui = new UiOverlay(this);
         _uiLayer.AddChild(_ui);
 
-        EnterRoom("hub", RoomDb.Get("hub").PlayerSpawn);
+        EnterRoom("hub", Vector2.Zero);
         BuildMainMenu();
         _fade = 1f;
 
@@ -538,7 +551,7 @@ public partial class MainGame : Node2D
         b.Hp = Mathf.Min(b.MaxHp, Mathf.Max(1, (int)Num(bd, "hp", b.Hp)));
         b.Aggro = bd["aggro"]?.GetValue<bool>() ?? false;
         string roomId = data["room"]?.GetValue<string>() ?? "hub";
-        if (RoomDb.Get(roomId) == null)
+        if (!RoomScenePaths.ContainsKey(roomId))
         {
             roomId = "hub";
         }
@@ -738,7 +751,9 @@ public partial class MainGame : Node2D
 
         _hubBanner = Mathf.Max(0, _hubBanner - dt);
         _connCooldown = Mathf.Max(0, _connCooldown - dt);
-        Bonfire.Update(dt);
+        Room.Bonfire?.Update(dt);
+        Room.AnimTime = _time;
+        Room.QueueRedraw();
         Player.Update(dt, Held);
         if (Player.JustDrank)
         {
@@ -759,9 +774,9 @@ public partial class MainGame : Node2D
         Player.Clamp();
         UpdateCamera();
 
-        if (RoomDef.BonfirePos.HasValue && GD.Randf() < 0.35f)
+        if (Room.Bonfire != null && GD.Randf() < 0.35f)
         {
-            var b = RoomDef.BonfirePos.Value;
+            var b = Room.Bonfire.Position;
             Particles.Spawn(new Vector2(b.X + GD.RandRange(-8, 8), b.Y - 10),
                 Palette.RGB(255, 170, 50), 1, 1.2f, 0.8f);
         }
@@ -873,7 +888,7 @@ public partial class MainGame : Node2D
             Player.Respawn();
             Boss.Reset();
             KilledEnemies.Clear();
-            EnterRoom("hub", RoomDb.Get("hub").PlayerSpawn);
+            EnterRoom("hub", Vector2.Zero);
             State = GameState.Play;
             _fade = 1f;
         }
@@ -895,7 +910,7 @@ public partial class MainGame : Node2D
         KilledEnemies.Clear();
         _messages.Clear();
         Particles.Clear();
-        EnterRoom("hub", RoomDb.Get("hub").PlayerSpawn);
+        EnterRoom("hub", Vector2.Zero);
         _fade = 1f;
     }
 
@@ -1304,7 +1319,7 @@ public partial class MainGame : Node2D
             }
             if (!gone)
             {
-                foreach (var sr in RoomDef.SolidRects)
+                foreach (var sr in Room.SolidRects)
                 {
                     if (pr.Rect.Intersects(sr, includeBorders: true))
                     {
@@ -1328,24 +1343,24 @@ public partial class MainGame : Node2D
 
     // ---------------------------------------------------------------- 房间
 
-    bool CanFight() => RoomDef.Combat;
+    bool CanFight() => Room.Combat;
 
     bool CanRest()
     {
-        if (!RoomDef.BonfirePos.HasValue || Player.Dead || (Boss.Aggro && !Boss.Dead))
+        if (Room.Bonfire == null || Player.Dead || (Boss.Aggro && !Boss.Dead))
         {
             return false;
         }
-        return Player.Position.DistanceSquaredTo(RoomDef.BonfirePos.Value) <= 60 * 60;
+        return Player.Position.DistanceSquaredTo(Room.Bonfire.Position) <= 60 * 60;
     }
 
     bool TryRest()
     {
-        if (!RoomDef.BonfirePos.HasValue)
+        if (Room.Bonfire == null)
         {
             return false;
         }
-        if (Player.Position.DistanceSquaredTo(RoomDef.BonfirePos.Value) > 60 * 60)
+        if (Player.Position.DistanceSquaredTo(Room.Bonfire.Position) > 60 * 60)
         {
             return false;
         }
@@ -1373,9 +1388,9 @@ public partial class MainGame : Node2D
         {
             return;
         }
-        foreach (var conn in RoomDef.Connections)
+        foreach (var conn in Room.Connections)
         {
-            var r = conn.Rect.Grow(30);
+            var r = conn.InteractRect.GrowIndividual(30, 30, 30, 30);
             if (!r.Intersects(Player.Body, includeBorders: true))
             {
                 continue;
@@ -1384,11 +1399,11 @@ public partial class MainGame : Node2D
             {
                 continue;
             }
-            if (RoomId == "arena" && conn.To == "hub")
+            if (RoomId == "arena" && conn.TargetRoom == "hub")
             {
                 Boss.Reset();
             }
-            EnterRoom(conn.To, conn.Spawn);
+            EnterRoom(conn.TargetRoom, conn.SpawnPos);
             _fade = 0.8f;
             break;
         }
@@ -1396,46 +1411,35 @@ public partial class MainGame : Node2D
 
     void EnterRoom(string roomId, Vector2 spawn)
     {
-        var room = RoomDb.Get(roomId);
+        if (!RoomScenePaths.TryGetValue(roomId, out var path))
+        {
+            return;
+        }
+        if (_roomNode != null)
+        {
+            _roomNode.QueueFree();
+        }
+        _roomNode = GD.Load<PackedScene>(path).Instantiate<Node2D>();
+        AddChild(_roomNode);
+        _roomNode.ZIndex = 1;
+        Room = _roomNode as RoomRoot;
         RoomId = roomId;
-        RoomDef = room;
         _floorSprite.Texture = GetFloor(roomId);
-        BuildTerrain(room);
-        Player.WorldBounds = room.Size;
-        Boss.WorldBounds = room.Size;
-        Player.Position = spawn;
+        var size = new Vector2(Room.RoomSize.X, Room.RoomSize.Y);
+        Player.WorldBounds = size;
+        Boss.WorldBounds = size;
+        Player.Position = spawn == Vector2.Zero ? Room.PlayerSpawn : spawn;
         _connCooldown = 0.4f;
         SpawnEnemies(roomId);
         SnapCamera();
-        if (room.Banner != null)
+        if (Room.Banner != null)
         {
-            _roomBannerKey = room.Banner;
+            _roomBannerKey = Room.Banner;
             _hubBanner = 2.6f;
         }
         else
         {
             _hubBanner = 0;
-        }
-    }
-
-    void BuildTerrain(RoomDef room)
-    {
-        if (_terrainNode != null)
-        {
-            _terrainNode.QueueFree();
-        }
-        _terrainNode = new Node2D();
-        AddChild(_terrainNode);
-        foreach (var sr in room.SolidRects)
-        {
-            var body = new StaticBody2D { CollisionLayer = 1, CollisionMask = 0 };
-            var shape = new CollisionShape2D
-            {
-                Shape = new RectangleShape2D { Size = sr.Size },
-                Position = sr.GetCenter(),
-            };
-            body.AddChild(shape);
-            _terrainNode.AddChild(body);
         }
     }
 
@@ -1447,15 +1451,15 @@ public partial class MainGame : Node2D
         }
         _enemies.Clear();
         _projectiles.Clear();
-        var room = RoomDb.Get(roomId);
-        for (int i = 0; i < room.EnemySpawns.Count; i++)
+        for (int i = 0; i < Room.EnemySpawns.Count; i++)
         {
             if (KilledEnemies.Contains((roomId, i)))
             {
                 continue;
             }
-            var (eid, pos) = room.EnemySpawns[i];
-            var e = new Enemy(eid, pos, i);
+            var es = Room.EnemySpawns[i];
+            var e = EnemyScene.Instantiate<Enemy>();
+            e.Setup(es.Eid, es.Pos, i, es.PatrolPoints);
             _enemiesLayer.AddChild(e);
             _enemies.Add(e);
         }
@@ -1465,16 +1469,16 @@ public partial class MainGame : Node2D
     {
         if (!_floorCache.TryGetValue(roomId, out var tex))
         {
-            tex = RenderFloor(RoomDb.Get(roomId));
+            tex = RenderFloor(new Vector2(Room.RoomSize.X, Room.RoomSize.Y), Room.SolidRects);
             _floorCache[roomId] = tex;
         }
         return tex;
     }
 
-    static ImageTexture RenderFloor(RoomDef room)
+    static ImageTexture RenderFloor(Vector2 size, List<Rect2> solidRects)
     {
-        int w = (int)room.Size.X;
-        int h = (int)room.Size.Y;
+        int w = (int)size.X;
+        int h = (int)size.Y;
         var img = Image.CreateEmpty(w, h, false, Image.Format.Rgb8);
         img.Fill(Palette.Floor);
         var rng = new System.Random(7);
@@ -1515,7 +1519,7 @@ public partial class MainGame : Node2D
                 img.SetPixel(Mathf.Max(0, w - 1 - i), y, Palette.Wall);
             }
         }
-        foreach (var sr in room.SolidRects)
+        foreach (var sr in solidRects)
         {
             var r = new Rect2I((int)sr.Position.X, (int)sr.Position.Y, (int)sr.Size.X, (int)sr.Size.Y);
             img.FillRect(r, Palette.RGB(52, 52, 60));
@@ -1537,8 +1541,8 @@ public partial class MainGame : Node2D
 
     Vector2 ClampCam(Vector2 p)
     {
-        float w = RoomDef.Size.X;
-        float h = RoomDef.Size.Y;
+        float w = Room.RoomSize.X;
+        float h = Room.RoomSize.Y;
         float tx = Mathf.Max(0, Mathf.Min(p.X - S.Width / 2f, w - S.Width));
         float ty = Mathf.Max(0, Mathf.Min(p.Y - S.Height / 2f, h - S.Height));
         return new Vector2(tx, ty);
@@ -1595,47 +1599,6 @@ public partial class MainGame : Node2D
 
     public static string KeyName(Key key) => key.ToString().ToUpper();
 
-    public override void _Draw()
-    {
-        DrawConnections();
-    }
-
-    void DrawConnections()
-    {
-        foreach (var conn in RoomDef.Connections)
-        {
-            if (conn.Kind == "fog")
-            {
-                bool isSealed = conn.Sealed == "boss_alive" && !Boss.Dead;
-                DrawFogGate(conn.Rect, isSealed);
-            }
-            else
-            {
-                var r = conn.Rect;
-                DrawRect(r, Palette.RGB(20, 18, 24));
-                DrawRect(r, Palette.RGB(110, 100, 80), false, 3);
-                DrawLine(
-                    new Vector2(r.Position.X + r.Size.X / 2f, r.Position.Y + 4),
-                    new Vector2(r.Position.X + r.Size.X / 2f, r.End.Y - 4),
-                    Palette.RGB(150, 138, 110), 2);
-            }
-        }
-    }
-
-    void DrawFogGate(Rect2 rect, bool isSealed)
-    {
-        var band = new Rect2(rect.Position.X, 200, 36, 340);
-        Color fill = isSealed ? Palette.RGB(110, 115, 130, 95) : Palette.RGB(200, 205, 215, 60);
-        Color circle = isSealed ? Palette.RGB(150, 155, 170, 80) : Palette.RGB(226, 229, 236, 95);
-        DrawRect(band, fill);
-        for (int i = 0; i < 6; i++)
-        {
-            float yy = 30 + Mathf.PosMod(_time * (16 + i * 7) + i * 53, 280);
-            float xx = 6 + 24 * (0.5f + 0.5f * Mathf.Sin(_time * 2 + i * 2.1f));
-            DrawCircle(new Vector2(band.Position.X + xx, band.Position.Y + yy), 9, circle);
-        }
-    }
-
     public void DrawFx(CanvasItem c)
     {
         Particles.Draw(c);
@@ -1655,13 +1618,13 @@ public partial class MainGame : Node2D
 
     void DrawInteractHints(CanvasItem c)
     {
-        if (RoomDef.BonfirePos.HasValue && CanRest())
+        if (Room.Bonfire != null && CanRest())
         {
-            DrawInteractHint(c, RoomDef.BonfirePos.Value + new Vector2(0, -95));
+            DrawInteractHint(c, Room.Bonfire.Position + new Vector2(0, -95));
         }
-        foreach (var conn in RoomDef.Connections)
+        foreach (var conn in Room.Connections)
         {
-            var r = conn.Rect.Grow(30);
+            var r = conn.InteractRect.GrowIndividual(30, 30, 30, 30);
             if (!r.Intersects(Player.Body, includeBorders: true))
             {
                 continue;
@@ -1670,7 +1633,7 @@ public partial class MainGame : Node2D
             {
                 continue;
             }
-            DrawInteractHint(c, conn.Rect.GetCenter());
+            DrawInteractHint(c, conn.InteractRect.GetCenter());
             break;
         }
     }

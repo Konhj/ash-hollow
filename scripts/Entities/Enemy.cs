@@ -62,6 +62,7 @@ public partial class Enemy : Entity
     public int Index;
     public JsonObject Data;
     public Vector2 Home;
+    public Vector2[] PatrolPoints = System.Array.Empty<Vector2>();
     public int Hp;
     public string State = "patrol";
     public float StateTimer;
@@ -75,17 +76,20 @@ public partial class Enemy : Entity
     public float AnimT;
     public int PatrolIdx;
 
-    public Enemy(string eid, Vector2 pos, int index)
+    /// <summary>由房间场景的 EnemySpawn 注入数据(模板/位置/巡逻点)。</summary>
+    public void Setup(string eid, Vector2 pos, int index, Vector2[] patrol)
     {
         Eid = eid;
         Index = index;
         Data = EnemyDb.Get(eid);
-        var size = EnemyDb.Size(Data);
-        Size = size;
+        Size = EnemyDb.Size(Data);
+        SetCollisionShape(Size);
         Position = pos;
         Home = pos;
+        PatrolPoints = patrol;
         Hp = EnemyDb.MaxHp(Data);
         AttackCd = (float)GD.RandRange(0.6f, 1.4f);
+        QueueRedraw();
     }
 
     public override void _Ready()
@@ -217,23 +221,16 @@ public partial class Enemy : Entity
 
     void UpdatePatrol(JsonObject ai, float frame)
     {
-        var patrol = ai["patrol"] as JsonObject;
-        if (patrol == null)
+        if (PatrolPoints.Length == 0)
         {
             return;
         }
-        var pts = patrol["points"] as JsonArray;
-        if (pts == null || pts.Count == 0)
-        {
-            return;
-        }
-        int idx = PatrolIdx % pts.Count;
-        var arr = pts[idx].AsArray();
-        var target = new Vector2((float)arr[0].GetValue<double>(), (float)arr[1].GetValue<double>());
+        int idx = PatrolIdx % PatrolPoints.Length;
+        var target = PatrolPoints[idx];
         bool arrived = MoveToward(target, (float)EnemyDb.Num(ai, "patrol_speed", 0.8) * frame);
         if (arrived)
         {
-            PatrolIdx = (PatrolIdx + 1) % pts.Count;
+            PatrolIdx = (PatrolIdx + 1) % PatrolPoints.Length;
         }
         float dx = target.X - Position.X;
         if (Mathf.Abs(dx) > 0.5f)

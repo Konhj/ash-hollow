@@ -1,0 +1,91 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/World/RoomRoot.cs" id="1_room"]
+[ext_resource type="Script" path="res://scripts/World/Connection.cs" id="2_conn"]
+
+[sub_resource type="RectangleShape2D" id="wall_top"]
+size = Vector2(1280, 16)
+
+[sub_resource type="RectangleShape2D" id="wall_bottom"]
+size = Vector2(1280, 16)
+
+[sub_resource type="RectangleShape2D" id="wall_right"]
+size = Vector2(16, 720)
+
+[sub_resource type="RectangleShape2D" id="wall_left1"]
+size = Vector2(16, 200)
+
+[sub_resource type="RectangleShape2D" id="wall_left2"]
+size = Vector2(16, 200)
+
+[sub_resource type="RectangleShape2D" id="conn_vert"]
+size = Vector2(36, 320)
+
+[node name="Arena" type="Node2D"]
+script = ExtResource("1_room")
+room_id = "arena"
+room_size = Vector2i(1280, 720)
+
+[node name="Terrain" type="Node2D" parent="."]
+
+[node name="WallTop" type="StaticBody2D" parent="Terrain"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape2D" parent="Terrain/WallTop"]
+position = Vector2(640, 8)
+shape = SubResource("wall_top")
+
+[node name="WallBottom" type="StaticBody2D" parent="Terrain"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape2D" parent="Terrain/WallBottom"]
+position = Vector2(640, 712)
+shape = SubResource("wall_bottom")
+
+[node name="WallRight" type="StaticBody2D" parent="Terrain"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape2D" parent="Terrain/WallRight"]
+position = Vector2(1272, 360)
+shape = SubResource("wall_right")
+
+[node name="WallLeft1" type="StaticBody2D" parent="Terrain"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape2D" parent="Terrain/WallLeft1"]
+position = Vector2(8, 100)
+shape = SubResource("wall_left1")
+
+[node name="WallLeft2" type="StaticBody2D" parent="Terrain"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape2D" parent="Terrain/WallLeft2"]
+position = Vector2(8, 620)
+shape = SubResource("wall_left2")
+
+[node name="Connections" type="Node2D" parent="."]
+
+[node name="ToHub" type="Area2D" parent="Connections"]
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+script = ExtResource("2_conn")
+target_room = "hub"
+kind = "fog"
+sealed = "boss_alive"
+
+[node name="Shape" type="CollisionShape2D" parent="Connections/ToHub"]
+position = Vector2(18, 360)
+shape = SubResource("conn_vert")
+
+[node name="Spawn" type="Marker2D" parent="Connections/ToHub"]
+position = Vector2(1150, 400)
+
+[node name="PlayerSpawn" type="Marker2D" parent="."]
+position = Vector2(150, 360)

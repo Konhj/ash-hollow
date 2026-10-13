@@ -11,7 +11,6 @@ namespace AshHollow;
 public static class DataTables
 {
     public static JsonNode Settings { get; private set; }
-    public static JsonNode Rooms { get; private set; }
     public static JsonNode Items { get; private set; }
     public static JsonNode Enemies { get; private set; }
     public static JsonNode I18n { get; private set; }
@@ -20,7 +19,6 @@ public static class DataTables
     public static void LoadAll()
     {
         Settings = Load("res://data/settings.json");
-        Rooms = Load("res://data/rooms.json");
         Items = Load("res://data/items.json");
         Enemies = Load("res://data/enemies.json");
         I18n = Load("res://data/i18n.json");
